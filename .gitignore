@@ -1,0 +1,4 @@
+*/*.tbl
+.DS_STORE
+venv
+tpch-pgsql/
