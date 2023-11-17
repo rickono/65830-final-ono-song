@@ -1,4 +1,5 @@
-*/*.tbl
+*.tbl
+*.tbl.bak
 .DS_STORE
 venv
 tpch-pgsql/

@@ -21,6 +21,8 @@ for table in ${tables[@]}; do
     sed -i.bak 's/.$//' $table.tbl
 done 
 
+rm *.bak
+
 # Insert into database
 for table in ${tables[@]}; do 
     psql -p5432 "tpchdb" -c "\COPY $table FROM '$table.tbl' DELIMITER '|';"
