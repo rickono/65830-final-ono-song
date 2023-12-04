@@ -30,13 +30,13 @@ def main(file):
     
     runtimes = []
     
-    for _ in range(10):
+    for _ in range(5):
         start_time = time.time()
         cursor.execute(query)
         end_time = time.time()
         runtimes.append(end_time - start_time)
     
-    print(f"Minimum execution time after 10 rounds: {round(min(runtimes), 5)}")
+    print(f"Minimum execution time after 5 rounds: {round(min(runtimes), 5)}")
     
     # Fetch the results
     results = cursor.fetchall()
