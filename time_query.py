@@ -21,32 +21,42 @@ def read_query_from_file(filename):
     with open(filename, 'r') as file:
         return file.read()
 
-def main(file):
-    db_params = config()
-    conn = psycopg2.connect(**db_params)
-    cursor = conn.cursor()
+def main(start=1):
+    f = open("results.txt", "w")
     
-    query = read_query_from_file(file)
+    for q in range(start, 23):
+        db_params = config()
+        conn = psycopg2.connect(**db_params)
+        cursor = conn.cursor()
+        file = f"tpch/dbgen/queries/{q}.sql"
+        print(f"Running query: {file}")
+        
+        query = read_query_from_file(file)
+        
+        runtimes = []
+        
+        for r in range(5):
+            start_time = time.time()
+            cursor.execute(query)
+            end_time = time.time()
+            runtime = end_time - start_time
+            runtimes.append(runtime)
+            print(f"\tQ{q} round {r+1}: {runtime}")
+
+        f.write(f"Q{q}: {round(min(runtimes), 5)}\n")
+        print(f"Minimum execution Q{q}: {round(min(runtimes), 5)}\n")
+        cursor.close()
+        conn.close()
+        
     
-    runtimes = []
-    
-    for _ in range(5):
-        start_time = time.time()
-        cursor.execute(query)
-        end_time = time.time()
-        runtimes.append(end_time - start_time)
-    
-    print(f"Minimum execution time after 5 rounds: {round(min(runtimes), 5)}")
-    
-    # Fetch the results
-    results = cursor.fetchall()
     
     # Close the cursor and connection
-    cursor.close()
-    conn.close()
+
+    f.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Please provide a sql query to run. Ex: python3 time_query.py test.sql")
-        sys.exit()
-    main(sys.argv[1])
+    args = sys.argv
+    if len(args) == 3:
+        if args[1] == '-s':
+            main(start=int(args[2]))
+    main()
