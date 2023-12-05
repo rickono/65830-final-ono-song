@@ -10,7 +10,7 @@ from typing import Callable, List, Dict
 
 import pandas as pd
 
-from tpc_headers import HEADERS
+from tpch_headers import HEADERS
 
 
 @functools.lru_cache
@@ -133,9 +133,15 @@ def load_partsupp(
 def timethis(q: Callable):
     @functools.wraps(q)
     def wrapped(*args, **kwargs):
-        t = time.time()
-        q(*args, **kwargs)
-        print("%s Execution time (s): %f" % (q.__name__.upper(), time.time() - t))
+        runtimes = []
+
+        for i in range(5):
+            start_time = time.time()
+            ans = q(*args, **kwargs)
+            end_time = time.time()
+            runtimes.append(end_time - start_time)
+        # print(ans)
+        print("%s Execution time (s): %f" % (q.__name__.upper(), round(min(runtimes), 5)))
 
     return wrapped
 
@@ -203,7 +209,7 @@ def q01(lineitem: pd.DataFrame):
     )
     # skip sort, Mars groupby enables sort
     # total = total.sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
-    print(total)
+    return total
 
 
 @timethis
@@ -310,7 +316,7 @@ def q02(part, partsupp, supplier, nation, region):
         by=["S_ACCTBAL", "N_NAME", "S_NAME", "P_PARTKEY"],
         ascending=[False, True, True, True],
     )
-    print(total)
+    return total
 
 
 @timethis
@@ -341,7 +347,7 @@ def q03(lineitem, orders, customer):
         .sort_values(["TMP"], ascending=False)
     )
     res = total.loc[:, ["L_ORDERKEY", "TMP", "O_ORDERDATE", "O_SHIPPRIORITY"]]
-    print(res.head(10))
+    return res.head(10)
 
 
 @timethis
@@ -359,7 +365,7 @@ def q04(lineitem, orders):
         # skip sort when Mars enables sort in groupby
         # .sort_values(["O_ORDERPRIORITY"])
     )
-    print(total)
+    return total
 
 
 @timethis
@@ -381,7 +387,7 @@ def q05(lineitem, orders, customer, nation, region, supplier):
     jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1.0 - jn5.L_DISCOUNT)
     gb = jn5.groupby("N_NAME", as_index=False, sort=False)["TMP"].sum()
     total = gb.sort_values("TMP", ascending=False)
-    print(total)
+    return total
 
 
 @timethis
@@ -401,7 +407,7 @@ def q06(lineitem):
     )
     flineitem = lineitem_filtered[sel]
     total = (flineitem.L_EXTENDEDPRICE * flineitem.L_DISCOUNT).sum()
-    print(total)
+    return total
 
 
 @timethis
@@ -491,7 +497,7 @@ def q07(lineitem, supplier, orders, customer, nation):
     # total = total.sort_values(
     #     by=["SUPP_NATION", "CUST_NATION", "L_YEAR"], ascending=[True, True, True]
     # )
-    print(total)
+    return total
 
 
 @timethis
@@ -555,7 +561,7 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
     total = total.groupby("O_YEAR", as_index=False).apply(udf)
     total.columns = ["O_YEAR", "MKT_SHARE"]
     total = total.sort_values(by=["O_YEAR"], ascending=[True])
-    print(total)
+    return total
 
 
 @timethis
@@ -576,7 +582,7 @@ def q09(lineitem, orders, part, nation, partsupp, supplier):
     jn5["O_YEAR"] = jn5.O_ORDERDATE.dt.year
     gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False, sort=False)["TMP"].sum()
     total = gb.sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
-    print(total)
+    return total
 
 
 @timethis
@@ -606,7 +612,7 @@ def q10(lineitem, orders, customer, nation):
         sort=False,
     )["TMP"].sum()
     total = gb.sort_values("TMP", ascending=False)
-    print(total.head(20))
+    return total.head(20)
 
 
 @timethis
@@ -633,7 +639,7 @@ def q11(partsupp, supplier, nation):
     )
     total = total[total["VALUE"] > sum_val]
     total = total.sort_values("VALUE", ascending=False)
-    print(total)
+    return total
 
 
 @timethis
@@ -663,7 +669,7 @@ def q12(lineitem, orders):
     total = total.reset_index()  # reset index to keep consistency with pandas
     # skip sort when groupby does sort already
     # total = total.sort_values("L_SHIPMODE")
-    print(total)
+    return total
 
 
 @timethis
@@ -684,7 +690,7 @@ def q13(customer, orders):
     total = count_df.groupby(["C_COUNT"], as_index=False, sort=False).size()
     total.columns = ["C_COUNT", "CUSTDIST"]
     total = total.sort_values(by=["CUSTDIST", "C_COUNT"], ascending=[False, False])
-    print(total)
+    return total
 
 
 @timethis
@@ -704,7 +710,7 @@ def q14(lineitem, part):
     jn = flineitem.merge(part_filtered, left_on="L_PARTKEY", right_on="P_PARTKEY")
     jn["TMP"] = jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)
     total = jn[jn.P_TYPE.str.startswith(p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
-    print(total)
+    return total
 
 
 @timethis
@@ -735,7 +741,7 @@ def q15(lineitem, supplier):
     total = total.loc[
         :, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE", "TOTAL_REVENUE"]
     ]
-    print(total)
+    return total
 
 
 @timethis
@@ -770,7 +776,7 @@ def q16(part, partsupp, supplier):
         by=["SUPPLIER_CNT", "P_BRAND", "P_TYPE", "P_SIZE"],
         ascending=[False, True, True, True],
     )
-    print(total)
+    return total
 
 
 @timethis
@@ -796,7 +802,7 @@ def q17(lineitem, part):
     )
     total = total[total["L_QUANTITY"] < total["avg"]]
     total = pd.DataFrame({"avg_yearly": [total["L_EXTENDEDPRICE"].sum() / 7.0]})
-    print(total)
+    return total
 
 
 @timethis
@@ -812,7 +818,7 @@ def q18(lineitem, orders, customer):
         sort=False,
     )["L_QUANTITY"].sum()
     total = gb2.sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
-    print(total.head(100))
+    return total.head(100)
 
 
 @timethis
@@ -913,7 +919,7 @@ def q19(lineitem, part):
     )
     jn = jn[jnsel]
     total = (jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)).sum()
-    print(total)
+    return total
 
 
 @timethis
@@ -942,7 +948,7 @@ def q20(lineitem, part, nation, partsupp, supplier):
     jn4 = fnation.merge(jn3, left_on="N_NATIONKEY", right_on="S_NATIONKEY")
     jn4 = jn4.loc[:, ["S_NAME", "S_ADDRESS"]]
     total = jn4.sort_values("S_NAME").drop_duplicates()
-    print(total)
+    return total
 
 
 @timethis
@@ -1008,7 +1014,7 @@ def q21(lineitem, orders, supplier, nation):
     total = total.groupby("S_NAME", as_index=False, sort=False).size()
     total.columns = ["S_NAME", "NUMWAIT"]
     total = total.sort_values(by=["NUMWAIT", "S_NAME"], ascending=[False, True])
-    print(total)
+    return total
 
 
 @timethis
@@ -1043,7 +1049,7 @@ def q22(customer, orders):
     )
     total = agg1.merge(agg2, on="CNTRYCODE", how="inner")
     total = total.sort_values(by=["CNTRYCODE"], ascending=[True])
-    print(total)
+    return total
 
 
 def run_queries(
@@ -1067,7 +1073,10 @@ def run_queries(
     total_start = time.time()
     for query in queries:
         globals()[f"q{query:02}"](*queries_to_args[query])
-    print(f"Total query execution time (s): {time.time() - total_start}")
+
+    total_end = time.time()
+    print(f"Total query execution time (s): {total_end - total_start}")
+    print(f"Average total query execution time for 1 round: {(total_end - total_start) / 5}")
 
 
 def main():
