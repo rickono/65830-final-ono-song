@@ -29,3 +29,6 @@ for table in ${tables[@]}; do
 done
 
 cd $ORIG
+
+psql -p5432 "tpchdb" -f $ORIG/create_index.sql
+psql -p5432 "tpchdb" -f $ORIG/vacuum.sql

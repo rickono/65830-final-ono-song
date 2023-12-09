@@ -2,6 +2,7 @@ import psycopg2
 from configparser import ConfigParser
 import time
 import sys
+import argparse
 
 def config(filename='database.ini', section='postgresql'):
     parser = ConfigParser()
@@ -21,8 +22,10 @@ def read_query_from_file(filename):
     with open(filename, 'r') as file:
         return file.read()
 
-def main(start=1):
-    f = open("results.txt", "w")
+def main(args):
+    start = args.start
+    results_file = args.output
+    f = open(results_file, "w")
     
     for q in range(start, 23):
         db_params = config()
@@ -43,7 +46,7 @@ def main(start=1):
             runtimes.append(runtime)
             print(f"\tQ{q} round {r+1}: {runtime}")
 
-        f.write(f"Q{q}: {round(min(runtimes), 5)}\n")
+        f.write(f"Q{q}: {[round(rt, 3) for rt in runtimes]}, {round(min(runtimes), 5)}\n")
         print(f"Minimum execution Q{q}: {round(min(runtimes), 5)}\n")
         cursor.close()
         conn.close()
@@ -55,8 +58,8 @@ def main(start=1):
     f.close()
 
 if __name__ == "__main__":
-    args = sys.argv
-    if len(args) == 3:
-        if args[1] == '-s':
-            main(start=int(args[2]))
-    main()
+    parser = argparse.ArgumentParser(description='Time TPC-H queries')
+    parser.add_argument('-s', '--start', type=int, help='Starting query', default=1)
+    parser.add_argument('-o', '--output', type=str, help='Output filename', default='result.txt')
+    args = parser.parse_args()
+    main(args)
