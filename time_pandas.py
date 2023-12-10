@@ -1,19 +1,21 @@
 # adapted from: https://gist.github.com/UranusSeven/55817bf0f304cc24f5eb63b2f1c3e2cd
-# to execute, run "python3 time_pandas.py --data_set 'tpch/dbgen/tbl'" from root directory
+# to execute, run "python3 time_pandas.py --data_set 'tpch/dbgen'" from root directory
 
 import argparse
 import functools
 import inspect
 import json
 import time
+import re
 from typing import Callable, List, Dict
 
 import pandas as pd
+pd.options.mode.chained_assignment = None
 
 from tpch_headers import HEADERS
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_lineitem(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -31,7 +33,7 @@ def load_lineitem(
     return df
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_part(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -45,7 +47,7 @@ def load_part(
     return df
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_orders(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -60,7 +62,7 @@ def load_orders(
     return df
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_customer(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -74,7 +76,7 @@ def load_customer(
     return df
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_nation(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -88,7 +90,7 @@ def load_nation(
     return df
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_region(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -102,7 +104,7 @@ def load_region(
     return df
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_supplier(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -116,7 +118,7 @@ def load_supplier(
     return df
 
 
-@functools.lru_cache
+@functools.lru_cache(maxsize=128)
 def load_partsupp(
     data_folder: str, **storage_options
 ) -> pd.DataFrame:
@@ -1052,21 +1054,65 @@ def q22(customer, orders):
     return total
 
 
+def cast_cols(
+        root: str,
+        datasets_to_load=list(HEADERS.keys()),
+        verbose=False
+    ):
+    dfs = []
+
+    for dataset in datasets_to_load:
+        df = globals()[f"load_{dataset}"](root)
+
+        if verbose:
+            print(dataset + "\n-------------")
+            print("Memory usage w/no casting: {}".format(df.memory_usage(deep=True)))
+
+        # categorical casting
+        pattern = r"^[A-MO-QS-Z]_(NATIONKEY|REGIONKEY)$"
+        regex = re.compile(pattern)
+        matches = [s for s in df.columns if regex.match(s)]
+
+        if matches:
+            print("Casting {} as categorical".format(', '.join(matches)))
+            for match in matches:
+                df[match] = df[match].astype("category")
+
+        # numeric downcasting
+        df = df.apply(
+            lambda x: pd.to_numeric(x, downcast="float") if x.dtype=='float64'
+                else pd.to_numeric(x, downcast="integer") if x.dtype=='int64'
+                else x,
+            axis=0
+        )
+        
+        if verbose:
+            print("Memory usage w/ casting: {}".format(df.memory_usage(deep=True)))
+
+        dfs.append(df)
+
+    return dfs
+
+
 def run_queries(
     root: str,
     storage_options: Dict[str, str],
     queries: List[int],
+    cast_types=False
 ):
     total_start = time.time()
     print("Start data loading")
     queries_to_args = dict()
     datasets_to_load = set()
     for query in queries:
-        args = []
-        for dataset in _query_to_datasets[query]:
-            args.append(
-                globals()[f"load_{dataset}"](root, **storage_options)
-            )
+        if cast_types:
+            args = cast_cols(root, _query_to_datasets[query])
+        else:
+            args = [globals()[f"load_{dataset}"](root, **storage_options) for dataset in _query_to_datasets[query]]
+            # for dataset in _query_to_datasets[query]:
+            #     args.append(
+            #         globals()[f"load_{dataset}"](root, **storage_options)
+            #     )
         queries_to_args[query] = args
     print(f"Data loading time (s): {time.time() - total_start}")
 
@@ -1113,10 +1159,15 @@ def main():
         help="Use arrow dtype.",
     )
 
+    parser.add_argument(
+        "--cast", 
+        action="store_true", 
+        help="Downcast nation/region and numerics"
+    ) 
 
     args = parser.parse_args()
     data_set = args.data_set
-
+    cast_types = True if args.cast else False
 
     if args.pyarrow_dtype:
         print("Enable pyarrow dtype")
@@ -1143,9 +1194,11 @@ def main():
         data_set,
         storage_options=storage_options,
         queries=queries,
+        cast_types=cast_types
     )
 
 
 if __name__ == "__main__":
     print(f"Running TPC-H against pandas v{pd.__version__}")
     main()
+
