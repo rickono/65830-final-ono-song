@@ -174,6 +174,7 @@ def q01(lineitem: pd.DataFrame):
             "L_ORDERKEY",
         ],
     ]
+    print(lineitem_filtered.memory_usage(deep=True))
     sel = lineitem_filtered.L_SHIPDATE <= date
     lineitem_filtered = lineitem_filtered[sel]
     lineitem_filtered["AVG_QTY"] = lineitem_filtered.L_QUANTITY
@@ -1065,11 +1066,11 @@ def cast_cols(
     for dataset in datasets_to_load:
         df = globals()[f"load_{dataset}"](root)
 
-        if verbose:
-            print(dataset + "\n-------------")
-            print("Memory usage w/no casting: {}".format(df.memory_usage(deep=True)))
+        # if verbose:
+        print(dataset + "\n-------------")
+        print("Memory usage w/no casting: {}".format(df.memory_usage(deep=True)))
 
-        # categorical casting
+        # categorical castixng
         pattern = r"^[A-MO-QS-Z]_(NATIONKEY|REGIONKEY)$"
         regex = re.compile(pattern)
         matches = [s for s in df.columns if regex.match(s)]
