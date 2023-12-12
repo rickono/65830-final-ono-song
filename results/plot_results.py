@@ -153,6 +153,7 @@ def pd_vs_pg_bar():
         subp.set_ylabel('Postgres runtime / Pandas runtime')
         subp.bar(queries, proportion)
         subp.axhline(y=1, color='red', linestyle='--')
+        subp.set_xticks([q for i, q in enumerate(queries) if i % 2 == 0])
 
     fig.suptitle('Postgres vs. Pandas runtimes', fontsize=16)
     plt.tight_layout()
