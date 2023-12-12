@@ -8,6 +8,7 @@ import json
 import time
 import re
 from typing import Callable, List, Dict
+import warnings
 
 import pandas as pd
 # import modin.pandas as pd
@@ -144,6 +145,7 @@ def timethis(q: Callable):
             end_time = time.time()
             runtimes.append(end_time - start_time)
         # print(ans)
+        print(f"{q.__name__.upper()}: {runtimes}")
         print("%s Execution time (s): %f" % (q.__name__.upper(), round(min(runtimes), 5)))
 
     return wrapped
@@ -1128,6 +1130,8 @@ def run_queries(
 
 
 def main():
+    warnings.filterwarnings("ignore")
+
     parser = argparse.ArgumentParser(description="tpch-queries")
     parser.add_argument(
         "--data_set",

@@ -1,0 +1,46 @@
+explain -- $ID$
+-- TPC-H/TPC-R Customer Distribution Query (Q13)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	c_count,
+	count(*) as custdist
+from
+	(
+		select
+			c_custkey,
+			count(o_orderkey)
+		from
+			customer left outer join orders on
+				c_custkey = o_custkey
+				and o_comment not like '%special%requests%'
+		group by
+			c_custkey
+	) as c_orders (c_custkey, c_count)
+group by
+	c_count
+order by
+	custdist desc,
+	c_count desc;
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=1449824.53..1449825.03 rows=200 width=16)
+   Sort Key: (count(*)) DESC, (count(orders.o_orderkey)) DESC
+   ->  HashAggregate  (cost=1449814.89..1449816.89 rows=200 width=16)
+         Group Key: count(orders.o_orderkey)
+         ->  Finalize HashAggregate  (cost=1383012.44..1427313.01 rows=1500125 width=12)
+               Group Key: customer.c_custkey
+               Planned Partitions: 16
+               ->  Gather  (cost=826972.88..1190808.93 rows=3000250 width=12)
+                     Workers Planned: 2
+                     ->  Partial HashAggregate  (cost=825972.88..889783.93 rows=1500125 width=12)
+                           Group Key: customer.c_custkey
+                           Planned Partitions: 16
+                           ->  Parallel Hash Right Join  (cost=40466.72..474542.34 rows=6247654 width=8)
+                                 Hash Cond: (orders.o_custkey = customer.c_custkey)
+                                 ->  Parallel Seq Scan on orders  (cost=0.00..354219.48 rows=6247654 width=12)
+                                       Filter: ((o_comment)::text !~~ '%special%requests%'::text)
+                                 ->  Parallel Hash  (cost=30211.57..30211.57 rows=625052 width=4)
+                                       ->  Parallel Index Only Scan using customer_pkey on customer  (cost=0.43..30211.57 rows=625052 width=4)
+(18 rows)
+
