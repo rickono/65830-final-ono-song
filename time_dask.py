@@ -11,6 +11,7 @@ from typing import Callable, List, Dict
 
 import pandas as pd
 import dask.dataframe as dd
+from dask.distributed import Client
 pd.options.mode.chained_assignment = None
 
 from tpch_headers import HEADERS
@@ -233,10 +234,12 @@ def q02(part, partsupp, supplier, nation, region):
     nation_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME", "N_REGIONKEY"]]
     region_filtered = region[(region["R_NAME"] == "EUROPE")]
     region_filtered = region_filtered.loc[:, ["R_REGIONKEY"]]
+
     r_n_merged = nation_filtered.merge(
         region_filtered, left_on="N_REGIONKEY", right_on="R_REGIONKEY", how="inner"
     )
     r_n_merged = r_n_merged.loc[:, ["N_NATIONKEY", "N_NAME"]]
+    r_n_merged = r_n_merged.repartition(npartitions=1)
     supplier_filtered = supplier.loc[
         :,
         [
@@ -307,6 +310,7 @@ def q02(part, partsupp, supplier, nation, region):
     min_values = merged_df.groupby("P_PARTKEY", sort=False)[
         "PS_SUPPLYCOST"
     ].min().to_frame()
+    min_values = min_values.repartition(npartitions=1)  # know it's small
     min_values.columns = ["MIN_SUPPLYCOST"]
 
     merged_df = merged_df.merge(
@@ -314,7 +318,8 @@ def q02(part, partsupp, supplier, nation, region):
         left_on=["P_PARTKEY", "PS_SUPPLYCOST"],
         right_on=["P_PARTKEY", "MIN_SUPPLYCOST"],
         how="inner",
-    )
+    ).compute()
+
     total = merged_df.loc[
         :,
         [
@@ -332,7 +337,7 @@ def q02(part, partsupp, supplier, nation, region):
         by=["S_ACCTBAL", "N_NAME", "S_NAME", "P_PARTKEY"],
         ascending=[False, True, True, True],
     )
-    return total.compute()
+    return total
 
 
 @timethis
@@ -1128,7 +1133,7 @@ def cast_cols(
             print("Memory usage w/ casting: {}".format(ddf.memory_usage(deep=True)))
 
         # convert back to dask dataframe
-        ddfs.append(dd.from_pandas(ddf, chunksize=64))
+        ddfs.append(dd.from_pandas(ddf, chunksize=128))
 
     return ddfs
 
@@ -1239,5 +1244,6 @@ def main():
 
 if __name__ == "__main__":
     print(f"Running TPC-H against pandas v{pd.__version__} with Dask")
+    client = Client()  # start distributed scheduler locally.
     main()
 
