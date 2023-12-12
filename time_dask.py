@@ -8,6 +8,7 @@ import json
 import time
 import re
 from typing import Callable, List, Dict
+import warnings
 
 import pandas as pd
 import dask.dataframe as dd
@@ -156,6 +157,11 @@ def timethis(q: Callable):
             end_time = time.time()
             runtimes.append(end_time - start_time)
         # print(ans)
+<<<<<<< Updated upstream
+        print(runtimes)
+=======
+        print(f"{q.__name__.upper()}: {runtimes}")
+>>>>>>> Stashed changes
         print("%s Execution time (s): %f" % (q.__name__.upper(), round(min(runtimes), 5)))
 
     return wrapped
@@ -327,12 +333,12 @@ def q02(part, partsupp, supplier, nation, region):
             "S_PHONE",
             "S_COMMENT",
         ],
-    ]
+    ].compute()
     total = total.sort_values(
         by=["S_ACCTBAL", "N_NAME", "S_NAME", "P_PARTKEY"],
         ascending=[False, True, True, True],
     )
-    return total.compute()
+    return total
 
 
 @timethis
@@ -1165,6 +1171,7 @@ def run_queries(
 
 
 def main():
+    warnings.filterwarnings("ignore")
     parser = argparse.ArgumentParser(description="tpch-queries")
     parser.add_argument(
         "--data_set",
