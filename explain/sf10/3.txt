@@ -1,0 +1,52 @@
+explain -- $ID$
+-- TPC-H/TPC-R Shipping Priority Query (Q3)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	l_orderkey,
+	sum(l_extendedprice * (1 - l_discount)) as revenue,
+	o_orderdate,
+	o_shippriority
+from
+	customer,
+	orders,
+	lineitem
+where
+	c_mktsegment = 'BUILDING'
+	and c_custkey = o_custkey
+	and l_orderkey = o_orderkey
+	and o_orderdate < date '1995-03-15'
+	and l_shipdate > date '1995-03-15'
+group by
+	l_orderkey,
+	o_orderdate,
+	o_shippriority
+order by
+	revenue desc,
+	o_orderdate;
+                                                           QUERY PLAN                                                           
+--------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=3219610.19..3227774.64 rows=3265778 width=48)
+   Sort Key: (sum((lineitem.l_extendedprice * ('1'::numeric - lineitem.l_discount)))) DESC, orders.o_orderdate
+   ->  Finalize GroupAggregate  (cost=2336015.89..2765805.42 rows=3265778 width=48)
+         Group Key: lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority
+         ->  Gather Merge  (cost=2336015.89..2690964.67 rows=2721482 width=48)
+               Workers Planned: 2
+               ->  Partial GroupAggregate  (cost=2335015.87..2375838.10 rows=1360741 width=48)
+                     Group Key: lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority
+                     ->  Sort  (cost=2335015.87..2338417.72 rows=1360741 width=28)
+                           Sort Key: lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority
+                           ->  Parallel Hash Join  (cost=419642.01..2163826.84 rows=1360741 width=28)
+                                 Hash Cond: (lineitem.l_orderkey = orders.o_orderkey)
+                                 ->  Parallel Seq Scan on lineitem  (cost=0.00..1526855.46 rows=13483898 width=20)
+                                       Filter: (l_shipdate > '1995-03-15'::date)
+                                 ->  Parallel Hash  (cost=408681.12..408681.12 rows=630551 width=12)
+                                       ->  Parallel Hash Join  (cost=46464.21..408681.12 rows=630551 width=12)
+                                             Hash Cond: (orders.o_custkey = customer.c_custkey)
+                                             ->  Parallel Seq Scan on orders  (cost=0.00..354219.48 rows=3046630 width=20)
+                                                   Filter: (o_orderdate < '1995-03-15'::date)
+                                             ->  Parallel Hash  (cost=44847.15..44847.15 rows=129365 width=4)
+                                                   ->  Parallel Seq Scan on customer  (cost=0.00..44847.15 rows=129365 width=4)
+                                                         Filter: (c_mktsegment = 'BUILDING'::bpchar)
+(22 rows)
+

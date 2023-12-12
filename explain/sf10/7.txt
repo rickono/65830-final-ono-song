@@ -1,0 +1,79 @@
+explain -- $ID$
+-- TPC-H/TPC-R Volume Shipping Query (Q7)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	supp_nation,
+	cust_nation,
+	l_year,
+	sum(volume) as revenue
+from
+	(
+		select
+			n1.n_name as supp_nation,
+			n2.n_name as cust_nation,
+			extract(year from l_shipdate) as l_year,
+			l_extendedprice * (1 - l_discount) as volume
+		from
+			supplier,
+			lineitem,
+			orders,
+			customer,
+			nation n1,
+			nation n2
+		where
+			s_suppkey = l_suppkey
+			and o_orderkey = l_orderkey
+			and c_custkey = o_custkey
+			and s_nationkey = n1.n_nationkey
+			and c_nationkey = n2.n_nationkey
+			and (
+				(n1.n_name = 'FRANCE' and n2.n_name = 'GERMANY')
+				or (n1.n_name = 'GERMANY' and n2.n_name = 'FRANCE')
+			)
+			and l_shipdate between date '1995-01-01' and date '1996-12-31'
+	) as shipping
+group by
+	supp_nation,
+	cust_nation,
+	l_year
+order by
+	supp_nation,
+	cust_nation,
+	l_year;
+                                                                                      QUERY PLAN                                                                                       
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=1785952.23..1789267.43 rows=10040 width=116)
+   Group Key: n1.n_name, n2.n_name, (EXTRACT(year FROM lineitem.l_shipdate))
+   ->  Gather Merge  (cost=1785952.23..1788865.83 rows=20080 width=116)
+         Workers Planned: 2
+         ->  Partial GroupAggregate  (cost=1784952.21..1785548.08 rows=10040 width=116)
+               Group Key: n1.n_name, n2.n_name, (EXTRACT(year FROM lineitem.l_shipdate))
+               ->  Sort  (cost=1784952.21..1785015.82 rows=25444 width=96)
+                     Sort Key: n1.n_name, n2.n_name, (EXTRACT(year FROM lineitem.l_shipdate))
+                     ->  Parallel Hash Join  (cost=143368.35..1783090.34 rows=25444 width=96)
+                           Hash Cond: (lineitem.l_orderkey = orders.o_orderkey)
+                           Join Filter: (((n1.n_name = 'FRANCE'::bpchar) AND (n2.n_name = 'GERMANY'::bpchar)) OR ((n1.n_name = 'GERMANY'::bpchar) AND (n2.n_name = 'FRANCE'::bpchar)))
+                           ->  Parallel Hash Join  (cost=3126.05..1624724.06 rows=611406 width=50)
+                                 Hash Cond: (lineitem.l_suppkey = supplier.s_suppkey)
+                                 ->  Parallel Seq Scan on lineitem  (cost=0.00..1589341.75 rows=7642576 width=32)
+                                       Filter: ((l_shipdate >= '1995-01-01'::date) AND (l_shipdate <= '1996-12-31'::date))
+                                 ->  Parallel Hash  (cost=3067.23..3067.23 rows=4706 width=30)
+                                       ->  Hash Join  (cost=1.40..3067.23 rows=4706 width=30)
+                                             Hash Cond: (supplier.s_nationkey = n1.n_nationkey)
+                                             ->  Parallel Seq Scan on supplier  (cost=0.00..2885.24 rows=58824 width=12)
+                                             ->  Hash  (cost=1.38..1.38 rows=2 width=30)
+                                                   ->  Seq Scan on nation n1  (cost=0.00..1.38 rows=2 width=30)
+                                                         Filter: ((n_name = 'FRANCE'::bpchar) OR (n_name = 'GERMANY'::bpchar))
+                           ->  Parallel Hash  (cost=130576.02..130576.02 rows=499862 width=30)
+                                 ->  Nested Loop  (cost=1.83..130576.02 rows=499862 width=30)
+                                       ->  Hash Join  (cost=1.40..45204.83 rows=50004 width=30)
+                                             Hash Cond: (customer.c_nationkey = n2.n_nationkey)
+                                             ->  Parallel Seq Scan on customer  (cost=0.00..43284.52 rows=625052 width=12)
+                                             ->  Hash  (cost=1.38..1.38 rows=2 width=30)
+                                                   ->  Seq Scan on nation n2  (cost=0.00..1.38 rows=2 width=30)
+                                                         Filter: ((n_name = 'GERMANY'::bpchar) OR (n_name = 'FRANCE'::bpchar))
+                                       ->  Index Scan using idx_orders_custkey on orders  (cost=0.43..1.53 rows=18 width=12)
+                                             Index Cond: (o_custkey = customer.c_custkey)
+(32 rows)
+

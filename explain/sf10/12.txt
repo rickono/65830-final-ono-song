@@ -1,0 +1,49 @@
+explain -- $ID$
+-- TPC-H/TPC-R Shipping Modes and Order Priority Query (Q12)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	l_shipmode,
+	sum(case
+		when o_orderpriority = '1-URGENT'
+			or o_orderpriority = '2-HIGH'
+			then 1
+		else 0
+	end) as high_line_count,
+	sum(case
+		when o_orderpriority <> '1-URGENT'
+			and o_orderpriority <> '2-HIGH'
+			then 1
+		else 0
+	end) as low_line_count
+from
+	orders,
+	lineitem
+where
+	o_orderkey = l_orderkey
+	and l_shipmode in ('MAIL', 'SHIP')
+	and l_commitdate < l_receiptdate
+	and l_shipdate < l_commitdate
+	and l_receiptdate >= date '1994-01-01'
+	and l_receiptdate < date '1994-01-01' + interval '1' year
+group by
+	l_shipmode
+order by
+	l_shipmode;
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=2224433.17..2226819.07 rows=7 width=27)
+   Group Key: lineitem.l_shipmode
+   ->  Gather Merge  (cost=2224433.17..2226818.89 rows=14 width=27)
+         Workers Planned: 2
+         ->  Partial GroupAggregate  (cost=2223433.14..2225817.25 rows=7 width=27)
+               Group Key: lineitem.l_shipmode
+               ->  Sort  (cost=2223433.14..2223731.15 rows=119202 width=27)
+                     Sort Key: lineitem.l_shipmode
+                     ->  Nested Loop  (cost=0.43..2213382.60 rows=119202 width=27)
+                           ->  Parallel Seq Scan on lineitem  (cost=0.00..1776800.62 rows=119202 width=19)
+                                 Filter: ((l_shipmode = ANY ('{MAIL,SHIP}'::bpchar[])) AND (l_commitdate < l_receiptdate) AND (l_shipdate < l_commitdate) AND (l_receiptdate >= '1994-01-01'::date) AND (l_receiptdate < '1995-01-01 00:00:00'::timestamp without time zone))
+                           ->  Index Scan using orders_pkey on orders  (cost=0.43..3.66 rows=1 width=20)
+                                 Index Cond: (o_orderkey = lineitem.l_orderkey)
+(13 rows)
+
