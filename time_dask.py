@@ -10,127 +10,139 @@ import re
 from typing import Callable, List, Dict
 
 import pandas as pd
-# import modin.pandas as pd
+import dask.dataframe as dd
 pd.options.mode.chained_assignment = None
 
 from tpch_headers import HEADERS
 
 
 @functools.lru_cache(maxsize=128)
-def load_lineitem(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_lineitem(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/lineitem.tbl"
-    df = pd.read_table(
+
+    # Use dask.dataframe.read_table instead of pd.read_table
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['lineitem'],
+        names=HEADERS['lineitem'],
         storage_options=storage_options
     )
-    df["L_SHIPDATE"] = pd.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
-    df["L_RECEIPTDATE"] = pd.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
-    df["L_COMMITDATE"] = pd.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
 
-    return df
+    ddf["L_SHIPDATE"] = dd.to_datetime(ddf.L_SHIPDATE, format="%Y-%m-%d")
+    ddf["L_RECEIPTDATE"] = dd.to_datetime(ddf.L_RECEIPTDATE, format="%Y-%m-%d")
+    ddf["L_COMMITDATE"] = dd.to_datetime(ddf.L_COMMITDATE, format="%Y-%m-%d")
+
+    return ddf 
 
 
 @functools.lru_cache(maxsize=128)
-def load_part(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_part(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/part.tbl"
-    df = pd.read_table(
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['part'],
+        names=HEADERS['part'],
         storage_options=storage_options
     )
-    return df
+
+    return ddf
 
 
 @functools.lru_cache(maxsize=128)
-def load_orders(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_orders(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/orders.tbl"
-    df = pd.read_table(
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['orders'],
+        names=HEADERS['orders'],
         storage_options=storage_options
     )
-    df["O_ORDERDATE"] = pd.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
-    return df
+
+    ddf["O_ORDERDATE"] = dd.to_datetime(ddf.O_ORDERDATE, format="%Y-%m-%d")
+
+    return ddf
+
 
 
 @functools.lru_cache(maxsize=128)
-def load_customer(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_customer(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/customer.tbl"
-    df = pd.read_table(
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['customer'],
+        names=HEADERS['customer'],
         storage_options=storage_options
     )
-    return df
+
+    return ddf
 
 
 @functools.lru_cache(maxsize=128)
-def load_nation(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_nation(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/nation.tbl"
-    df = pd.read_table(
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['nation'],
+        names=HEADERS['nation'],
         storage_options=storage_options
     )
-    return df
 
+    return ddf
 
 @functools.lru_cache(maxsize=128)
-def load_region(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_region(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/region.tbl"
-    df = pd.read_table(
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['region'],
+        names=HEADERS['region'],
         storage_options=storage_options
     )
-    return df
+
+    return ddf 
 
 
 @functools.lru_cache(maxsize=128)
-def load_supplier(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_supplier(data_folder: str, use_dask=True,  **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/supplier.tbl"
-    df = pd.read_table(
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['supplier'],
+        names=HEADERS['supplier'],
         storage_options=storage_options
     )
-    return df
+
+    return ddf
+
 
 
 @functools.lru_cache(maxsize=128)
-def load_partsupp(
-    data_folder: str, **storage_options
-) -> pd.DataFrame:
+def load_partsupp(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/partsupp.tbl"
-    df = pd.read_table(
+    pkg = dd if use_dask else pd
+
+    ddf = pkg.read_table(
         data_path,
         sep='|',
-        names = HEADERS['partsupp'],
+        names=HEADERS['partsupp'],
         storage_options=storage_options
     )
-    return df
+
+    return ddf
 
 
 def timethis(q: Callable):
@@ -159,7 +171,7 @@ def collect_datasets(func: Callable):
 
 @timethis
 @collect_datasets
-def q01(lineitem: pd.DataFrame):
+def q01(lineitem: dd.DataFrame):
     date = pd.Timestamp("1998-09-02")
     lineitem_filtered = lineitem.loc[
         :,
@@ -186,7 +198,8 @@ def q01(lineitem: pd.DataFrame):
         * (1 - lineitem_filtered.L_DISCOUNT)
         * (1 + lineitem_filtered.L_TAX)
     )
-    gb = lineitem_filtered.groupby(["L_RETURNFLAG", "L_LINESTATUS"], as_index=False)[
+    # as_index=False not supported
+    gb = lineitem_filtered.groupby(["L_RETURNFLAG", "L_LINESTATUS"])[
         [
             "L_QUANTITY",
             "L_EXTENDEDPRICE",
@@ -210,9 +223,8 @@ def q01(lineitem: pd.DataFrame):
             "L_ORDERKEY": "count",
         }
     )
-    # skip sort, Mars groupby enables sort
-    # total = total.sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
-    return total
+    # Dask handles sorting during aggregation
+    return total.compute()
 
 
 @timethis
@@ -292,14 +304,15 @@ def q02(part, partsupp, supplier, nation, region):
             "P_MFGR",
         ],
     ]
-    min_values = merged_df.groupby("P_PARTKEY", as_index=False, sort=False)[
+    min_values = merged_df.groupby("P_PARTKEY", sort=False)[
         "PS_SUPPLYCOST"
-    ].min()
-    min_values.columns = ["P_PARTKEY_CPY", "MIN_SUPPLYCOST"]
+    ].min().to_frame()
+    min_values.columns = ["MIN_SUPPLYCOST"]
+
     merged_df = merged_df.merge(
         min_values,
         left_on=["P_PARTKEY", "PS_SUPPLYCOST"],
-        right_on=["P_PARTKEY_CPY", "MIN_SUPPLYCOST"],
+        right_on=["P_PARTKEY", "MIN_SUPPLYCOST"],
         how="inner",
     )
     total = merged_df.loc[
@@ -319,7 +332,7 @@ def q02(part, partsupp, supplier, nation, region):
         by=["S_ACCTBAL", "N_NAME", "S_NAME", "P_PARTKEY"],
         ascending=[False, True, True, True],
     )
-    return total
+    return total.compute()
 
 
 @timethis
@@ -344,12 +357,15 @@ def q03(lineitem, orders, customer):
     jn2["TMP"] = jn2.L_EXTENDEDPRICE * (1 - jn2.L_DISCOUNT)
     total = (
         jn2.groupby(
-            ["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], as_index=False, sort=False
+            ["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], sort=False
         )["TMP"]
         .sum()
+        .to_frame()
         .sort_values(["TMP"], ascending=False)
+        .reset_index() # this might be expensive idk
     )
     res = total.loc[:, ["L_ORDERKEY", "TMP", "O_ORDERDATE", "O_SHIPPRIORITY"]]
+    # head implicitly calls compute()
     return res.head(10)
 
 
@@ -362,13 +378,13 @@ def q04(lineitem, orders):
     osel = (orders.O_ORDERDATE < date1) & (orders.O_ORDERDATE >= date2)
     flineitem = lineitem[lsel]
     forders = orders[osel]
-    jn = forders[forders["O_ORDERKEY"].isin(flineitem["L_ORDERKEY"])]
+    jn = forders[forders["O_ORDERKEY"].isin(flineitem["L_ORDERKEY"].compute())]
     total = (
-        jn.groupby("O_ORDERPRIORITY", as_index=False)["O_ORDERKEY"].count()
+        jn.groupby("O_ORDERPRIORITY")["O_ORDERKEY"].count()
         # skip sort when Mars enables sort in groupby
         # .sort_values(["O_ORDERPRIORITY"])
     )
-    return total
+    return total.compute()
 
 
 @timethis
@@ -388,9 +404,9 @@ def q05(lineitem, orders, customer, nation, region, supplier):
         jn4, left_on=["S_SUPPKEY", "S_NATIONKEY"], right_on=["L_SUPPKEY", "N_NATIONKEY"]
     )
     jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1.0 - jn5.L_DISCOUNT)
-    gb = jn5.groupby("N_NAME", as_index=False, sort=False)["TMP"].sum()
+    gb = jn5.groupby("N_NAME", sort=False)["TMP"].sum().to_frame()
     total = gb.sort_values("TMP", ascending=False)
-    return total
+    return total.compute()
 
 
 @timethis
@@ -410,7 +426,7 @@ def q06(lineitem):
     )
     flineitem = lineitem_filtered[sel]
     total = (flineitem.L_EXTENDEDPRICE * flineitem.L_DISCOUNT).sum()
-    return total
+    return total.compute()
 
 
 @timethis
@@ -491,16 +507,13 @@ def q07(lineitem, supplier, orders, customer, nation):
     total2 = total2.drop(columns=["O_ORDERKEY", "L_ORDERKEY"])
 
     # concat results
-    total = pd.concat([total1, total2])
+    total = dd.multi.concat([total1, total2])
 
-    total = total.groupby(["SUPP_NATION", "CUST_NATION", "L_YEAR"], as_index=False).agg(
+    total = total.groupby(["SUPP_NATION", "CUST_NATION", "L_YEAR"]).agg(
         REVENUE=pd.NamedAgg(column="VOLUME", aggfunc="sum")
     )
-    # skip sort when Mars groupby does sort already
-    # total = total.sort_values(
-    #     by=["SUPP_NATION", "CUST_NATION", "L_YEAR"], ascending=[True, True, True]
-    # )
-    return total
+
+    return total.compute()
 
 
 @timethis
@@ -561,10 +574,11 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
         numerator = df["VOLUME"].sum()
         return numerator / demonimator
 
-    total = total.groupby("O_YEAR", as_index=False).apply(udf)
+    # TODO: CHECK CORRECTNESS FROM GROUPBY->APPLY; MAY NEED TO USE META
+    total = total.groupby("O_YEAR").apply(udf).to_frame().reset_index()
     total.columns = ["O_YEAR", "MKT_SHARE"]
     total = total.sort_values(by=["O_YEAR"], ascending=[True])
-    return total
+    return total.compute()
 
 
 @timethis
@@ -583,9 +597,9 @@ def q09(lineitem, orders, part, nation, partsupp, supplier):
         (1 * jn5.PS_SUPPLYCOST) * jn5.L_QUANTITY
     )
     jn5["O_YEAR"] = jn5.O_ORDERDATE.dt.year
-    gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False, sort=False)["TMP"].sum()
+    gb = jn5.groupby(["N_NAME", "O_YEAR"], sort=False)["TMP"].sum().to_frame()
     total = gb.sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
-    return total
+    return total.compute()
 
 
 @timethis
@@ -611,9 +625,9 @@ def q10(lineitem, orders, customer, nation):
             "C_ADDRESS",
             "C_COMMENT",
         ],
-        as_index=False,
+    
         sort=False,
-    )["TMP"].sum()
+    )["TMP"].sum().to_frame()
     total = gb.sort_values("TMP", ascending=False)
     return total.head(20)
 
@@ -637,12 +651,12 @@ def q11(partsupp, supplier, nation):
     )
     ps_supp_n_merge = ps_supp_n_merge.loc[:, ["PS_PARTKEY", "TOTAL_COST"]]
     sum_val = ps_supp_n_merge["TOTAL_COST"].sum() * 0.0001
-    total = ps_supp_n_merge.groupby(["PS_PARTKEY"], as_index=False, sort=False).agg(
+    total = ps_supp_n_merge.groupby(["PS_PARTKEY"], sort=False).agg(
         VALUE=pd.NamedAgg(column="TOTAL_COST", aggfunc="sum")
     )
     total = total[total["VALUE"] > sum_val]
     total = total.sort_values("VALUE", ascending=False)
-    return total
+    return total.compute()
 
 
 @timethis
@@ -662,17 +676,37 @@ def q12(lineitem, orders):
     flineitem = lineitem[sel]
     jn = flineitem.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
 
-    def g1(x):
-        return ((x == "1-URGENT") | (x == "2-HIGH")).sum()
+    # custom_g1 = dd.groupby.Aggregation(
+    #     'custom_g1',
+    #     chunk=lambda x: ((x == "1-URGENT") | (x == "2-HIGH")),
+    #     agg=lambda x1: dd.from_array(x1.count(), columns=['custom_g1_count'], meta=('x', 'i8'))
+    # )
 
-    def g2(x):
-        return ((x != "1-URGENT") & (x != "2-HIGH")).sum()
+    # custom_g2 = dd.groupby.Aggregation(
+    #     'custom_g2',
+    #     chunk=lambda x: ((x != "1-URGENT") & (x != "2-HIGH")),
+    #     agg=lambda x1: dd.from_array(x1.count(), columns=['custom_g2_count'], meta=('x', 'i8'))
+    # )
 
-    total = jn.groupby("L_SHIPMODE", as_index=False)["O_ORDERPRIORITY"].agg((g1, g2))
+    # total = jn.groupby("L_SHIPMODE")["O_ORDERPRIORITY"].agg([custom_g1, custom_g2])
+
+    # Define conditions
+    condition_g1 = ((jn["O_ORDERPRIORITY"] == "1-URGENT") | (jn["O_ORDERPRIORITY"] == "2-HIGH"))
+    condition_g2 = ((jn["O_ORDERPRIORITY"] != "1-URGENT") & (jn["O_ORDERPRIORITY"] != "2-HIGH"))
+
+    # Apply conditions and calculate counts
+    g1_count = jn[condition_g1].groupby("L_SHIPMODE")["O_ORDERPRIORITY"].count().rename('custom_g1_count')
+    g2_count = jn[condition_g2].groupby("L_SHIPMODE")["O_ORDERPRIORITY"].count().rename('custom_g2_count')
+
+    g1_count = g1_count.clear_divisions()
+    g2_count = g2_count.clear_divisions()
+
+    # Concatenate the results
+    total = dd.concat([g1_count, g2_count], axis=1)
     total = total.reset_index()  # reset index to keep consistency with pandas
     # skip sort when groupby does sort already
     # total = total.sort_values("L_SHIPMODE")
-    return total
+    return total.compute()
 
 
 @timethis
@@ -687,13 +721,13 @@ def q13(customer, orders):
         orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="left"
     )
     c_o_merged = c_o_merged.loc[:, ["C_CUSTKEY", "O_ORDERKEY"]]
-    count_df = c_o_merged.groupby(["C_CUSTKEY"], as_index=False, sort=False).agg(
+    count_df = c_o_merged.groupby(["C_CUSTKEY"], sort=False).agg(
         C_COUNT=pd.NamedAgg(column="O_ORDERKEY", aggfunc="count")
     )
-    total = count_df.groupby(["C_COUNT"], as_index=False, sort=False).size()
+    total = count_df.groupby(["C_COUNT"], sort=False).size().to_frame().reset_index()
     total.columns = ["C_COUNT", "CUSTDIST"]
     total = total.sort_values(by=["CUSTDIST", "C_COUNT"], ascending=[False, False])
-    return total
+    return total.compute()
 
 
 @timethis
@@ -713,7 +747,7 @@ def q14(lineitem, part):
     jn = flineitem.merge(part_filtered, left_on="L_PARTKEY", right_on="P_PARTKEY")
     jn["TMP"] = jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)
     total = jn[jn.P_TYPE.str.startswith(p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
-    return total
+    return total.compute()
 
 
 @timethis
@@ -731,8 +765,9 @@ def q15(lineitem, supplier):
     )
     lineitem_filtered = lineitem_filtered.loc[:, ["L_SUPPKEY", "REVENUE_PARTS"]]
     revenue_table = (
-        lineitem_filtered.groupby("L_SUPPKEY", as_index=False, sort=False)
+        lineitem_filtered.groupby("L_SUPPKEY", sort=False)
         .agg(TOTAL_REVENUE=pd.NamedAgg(column="REVENUE_PARTS", aggfunc="sum"))
+        .reset_index()
         .rename(columns={"L_SUPPKEY": "SUPPLIER_NO"})
     )
     max_revenue = revenue_table["TOTAL_REVENUE"].max()
@@ -744,7 +779,7 @@ def q15(lineitem, supplier):
     total = total.loc[
         :, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE", "TOTAL_REVENUE"]
     ]
-    return total
+    return total.compute()
 
 
 @timethis
@@ -762,7 +797,7 @@ def q16(part, partsupp, supplier):
     )
     total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
     supplier_filtered = supplier[
-        supplier["S_COMMENT"].str.contains(r"Customer(\S|\s)*Complaints")
+        supplier["S_COMMENT"].str.contains(r"Customer(\S|\s)*Complaints", regex=True)
     ]
     supplier_filtered = supplier_filtered.loc[:, ["S_SUPPKEY"]].drop_duplicates()
     # left merge to select only PS_SUPPKEY values not in supplier_filtered
@@ -771,15 +806,15 @@ def q16(part, partsupp, supplier):
     )
     total = total[total["S_SUPPKEY"].isna()]
     total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
-    total = total.groupby(["P_BRAND", "P_TYPE", "P_SIZE"], as_index=False, sort=False)[
+    total = total.groupby(["P_BRAND", "P_TYPE", "P_SIZE"], sort=False)[
         "PS_SUPPKEY"
-    ].nunique()
+    ].nunique().to_frame().reset_index()
     total.columns = ["P_BRAND", "P_TYPE", "P_SIZE", "SUPPLIER_CNT"]
     total = total.sort_values(
         by=["SUPPLIER_CNT", "P_BRAND", "P_TYPE", "P_SIZE"],
         ascending=[False, True, True, True],
     )
-    return total
+    return total.compute()
 
 
 @timethis
@@ -796,30 +831,30 @@ def q17(lineitem, part):
     ]
     lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY"]]
     lineitem_avg = lineitem_filtered.groupby(
-        ["L_PARTKEY"], as_index=False, sort=False
-    ).agg(avg=pd.NamedAgg(column="L_QUANTITY", aggfunc="mean"))
+        ["L_PARTKEY"], sort=False
+    ).agg(avg=pd.NamedAgg(column="L_QUANTITY", aggfunc="mean")).reset_index()
     lineitem_avg["avg"] = 0.2 * lineitem_avg["avg"]
     lineitem_avg = lineitem_avg.loc[:, ["L_PARTKEY", "avg"]]
     total = line_part_merge.merge(
         lineitem_avg, left_on="P_PARTKEY", right_on="L_PARTKEY", how="inner"
     )
     total = total[total["L_QUANTITY"] < total["avg"]]
-    total = pd.DataFrame({"avg_yearly": [total["L_EXTENDEDPRICE"].sum() / 7.0]})
+    total = pd.DataFrame({"avg_yearly": [[total["L_EXTENDEDPRICE"].sum() / 7.0]]})
     return total
 
 
 @timethis
 @collect_datasets
 def q18(lineitem, orders, customer):
-    gb1 = lineitem.groupby("L_ORDERKEY", as_index=False, sort=False)["L_QUANTITY"].sum()
+    gb1 = lineitem.groupby("L_ORDERKEY", sort=False)["L_QUANTITY"].sum().to_frame()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
     jn1 = fgb1.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
     jn2 = jn1.merge(customer, left_on="O_CUSTKEY", right_on="C_CUSTKEY")
     gb2 = jn2.groupby(
         ["C_NAME", "C_CUSTKEY", "O_ORDERKEY", "O_ORDERDATE", "O_TOTALPRICE"],
-        as_index=False,
+    
         sort=False,
-    )["L_QUANTITY"].sum()
+    )["L_QUANTITY"].sum().to_frame()
     total = gb2.sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
     return total.head(100)
 
@@ -922,7 +957,7 @@ def q19(lineitem, part):
     )
     jn = jn[jnsel]
     total = (jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)).sum()
-    return total
+    return total.compute()
 
 
 @timethis
@@ -943,19 +978,20 @@ def q20(lineitem, part, nation, partsupp, supplier):
         right_on=["L_PARTKEY", "L_SUPPKEY"],
     )
     gb = jn2.groupby(
-        ["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY"], as_index=False, sort=False
-    )["L_QUANTITY"].sum()
+        ["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY"], sort=False
+    )["L_QUANTITY"].sum().reset_index()
     gbsel = gb.PS_AVAILQTY > (0.5 * gb.L_QUANTITY)
     fgb = gb[gbsel]
     jn3 = fgb.merge(supplier, left_on="PS_SUPPKEY", right_on="S_SUPPKEY")
     jn4 = fnation.merge(jn3, left_on="N_NATIONKEY", right_on="S_NATIONKEY")
     jn4 = jn4.loc[:, ["S_NAME", "S_ADDRESS"]]
     total = jn4.sort_values("S_NAME").drop_duplicates()
-    return total
+    return total.compute()
 
 
 @timethis
 @collect_datasets
+# TODO: check for conflict in txn graph???
 def q21(lineitem, orders, supplier, nation):
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_SUPPKEY", "L_RECEIPTDATE", "L_COMMITDATE"]
@@ -964,8 +1000,9 @@ def q21(lineitem, orders, supplier, nation):
     # Keep all rows that have another row in linetiem with the same orderkey and different suppkey
     lineitem_orderkeys = (
         lineitem_filtered.loc[:, ["L_ORDERKEY", "L_SUPPKEY"]]
-        .groupby("L_ORDERKEY", as_index=False, sort=False)["L_SUPPKEY"]
+        .groupby("L_ORDERKEY", sort=False)["L_SUPPKEY"]
         .nunique()
+        .reset_index()
     )
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
     lineitem_orderkeys = lineitem_orderkeys[lineitem_orderkeys["nunique_col"] > 1]
@@ -984,8 +1021,8 @@ def q21(lineitem, orders, supplier, nation):
 
     # Not Exists: Check the exists condition isn't still satisfied on the output.
     lineitem_orderkeys = lineitem_filtered.groupby(
-        "L_ORDERKEY", as_index=False, sort=False
-    )["L_SUPPKEY"].nunique()
+        "L_ORDERKEY", sort=False
+    )["L_SUPPKEY"].nunique().reset_index()
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
     lineitem_orderkeys = lineitem_orderkeys[lineitem_orderkeys["nunique_col"] == 1]
     lineitem_orderkeys = lineitem_orderkeys.loc[:, ["L_ORDERKEY"]]
@@ -1014,10 +1051,10 @@ def q21(lineitem, orders, supplier, nation):
         nation_filtered, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
     )
     total = total.loc[:, ["S_NAME"]]
-    total = total.groupby("S_NAME", as_index=False, sort=False).size()
+    total = total.groupby("S_NAME", sort=False).size().to_frame().reset_index()
     total.columns = ["S_NAME", "NUMWAIT"]
     total = total.sort_values(by=["NUMWAIT", "S_NAME"], ascending=[False, True])
-    return total
+    return total.compute()
 
 
 @timethis
@@ -1045,14 +1082,14 @@ def q22(customer, orders):
         customer_filtered, on="C_CUSTKEY", how="inner"
     )
     customer_selected = customer_selected.loc[:, ["CNTRYCODE", "C_ACCTBAL"]]
-    agg1 = customer_selected.groupby(["CNTRYCODE"], as_index=False, sort=False).size()
+    agg1 = customer_selected.groupby(["CNTRYCODE"], sort=False).size().to_frame().reset_index()
     agg1.columns = ["CNTRYCODE", "NUMCUST"]
-    agg2 = customer_selected.groupby(["CNTRYCODE"], as_index=False, sort=False).agg(
+    agg2 = customer_selected.groupby(["CNTRYCODE"], sort=False).agg(
         TOTACCTBAL=pd.NamedAgg(column="C_ACCTBAL", aggfunc="sum")
     )
     total = agg1.merge(agg2, on="CNTRYCODE", how="inner")
     total = total.sort_values(by=["CNTRYCODE"], ascending=[True])
-    return total
+    return total.compute()
 
 
 def cast_cols(
@@ -1060,27 +1097,27 @@ def cast_cols(
         datasets_to_load=list(HEADERS.keys()),
         verbose=False
     ):
-    dfs = []
+    ddfs = []
 
     for dataset in datasets_to_load:
-        df = globals()[f"load_{dataset}"](root)
+        ddf = globals()[f"load_{dataset}"](root, use_dask=False)
 
         if verbose:
             print(dataset + "\n-------------")
-            print("Memory usage w/no casting: {}".format(df.memory_usage(deep=True)))
+            print("Memory usage w/no casting: {}".format(ddf.memory_usage(deep=True)))
 
         # categorical casting
         pattern = r"^[A-MO-QS-Z]_(NATIONKEY|REGIONKEY)$"
         regex = re.compile(pattern)
-        matches = [s for s in df.columns if regex.match(s)]
+        matches = [s for s in ddf.columns if regex.match(s)]
 
         if matches:
             print("Casting {} as categorical".format(', '.join(matches)))
             for match in matches:
-                df[match] = df[match].astype("category")
+                ddf[match] = ddf[match].astype("category")
 
-        # numeric downcasting
-        df = df.apply(
+        # numeric downcasting; compile ddf back into pandas dataframe
+        ddf = ddf.apply(
             lambda x: pd.to_numeric(x, downcast="float") if x.dtype=='float64'
                 else pd.to_numeric(x, downcast="integer") if x.dtype=='int64'
                 else x,
@@ -1088,11 +1125,12 @@ def cast_cols(
         )
         
         if verbose:
-            print("Memory usage w/ casting: {}".format(df.memory_usage(deep=True)))
+            print("Memory usage w/ casting: {}".format(ddf.memory_usage(deep=True)))
 
-        dfs.append(df)
+        # convert back to dask dataframe
+        ddfs.append(dd.from_pandas(ddf, chunksize=64))
 
-    return dfs
+    return ddfs
 
 
 def run_queries(
@@ -1200,6 +1238,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print(f"Running TPC-H against pandas v{pd.__version__}")
+    print(f"Running TPC-H against pandas v{pd.__version__} with Dask")
     main()
 
