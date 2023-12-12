@@ -1,0 +1,2 @@
+Hash Join  (cost=419642.01..2163826.84 rows=1360741 width=28)
+Hash Join  (cost=46464.21..408681.12 rows=630551 width=12)
