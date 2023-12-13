@@ -1,0 +1,39 @@
+explain -- $ID$
+-- TPC-H/TPC-R Small-Quantity-Order Revenue Query (Q17)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	sum(l_extendedprice) / 7.0 as avg_yearly
+from
+	lineitem,
+	part
+where
+	p_partkey = l_partkey
+	and p_brand = 'Brand#23'
+	and p_container = 'MED BOX'
+	and l_quantity < (
+		select
+			0.2 * avg(l_quantity)
+		from
+			lineitem
+		where
+			l_partkey = p_partkey
+	);
+                                                       QUERY PLAN                                                        
+-------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1015333.33..1015333.35 rows=1 width=32)
+   ->  Hash Join  (cost=27854.74..1015306.05 rows=10911 width=8)
+         Hash Cond: (lineitem.l_partkey = part.p_partkey)
+         Join Filter: (lineitem.l_quantity < (SubPlan 1))
+         ->  Seq Scan on lineitem  (cost=0.00..907404.96 rows=30002096 width=21)
+         ->  Hash  (cost=27841.10..27841.10 rows=1091 width=4)
+               ->  Gather  (cost=1000.00..27841.10 rows=1091 width=4)
+                     Workers Planned: 2
+                     ->  Parallel Seq Scan on part  (cost=0.00..26732.00 rows=455 width=4)
+                           Filter: ((p_brand = 'Brand#23'::bpchar) AND (p_container = 'MED BOX'::bpchar))
+         SubPlan 1
+           ->  Aggregate  (cost=129.06..129.07 rows=1 width=32)
+                 ->  Index Scan using idx_lineitem_part_supp on lineitem lineitem_1  (cost=0.44..128.98 rows=31 width=5)
+                       Index Cond: (l_partkey = part.p_partkey)
+(14 rows)
+

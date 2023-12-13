@@ -1,0 +1,33 @@
+explain -- $ID$
+-- TPC-H/TPC-R Promotion Effect Query (Q14)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	100.00 * sum(case
+		when p_type like 'PROMO%'
+			then l_extendedprice * (1 - l_discount)
+		else 0
+	end) / sum(l_extendedprice * (1 - l_discount)) as promo_revenue
+from
+	lineitem,
+	part
+where
+	l_partkey = p_partkey
+	and l_shipdate >= date '1995-09-01'
+	and l_shipdate < date '1995-09-01' + interval '1' month;
+                                                                          QUERY PLAN                                                                          
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=756214.72..756214.73 rows=1 width=32)
+   ->  Gather  (cost=756214.48..756214.69 rows=2 width=64)
+         Workers Planned: 2
+         ->  Partial Aggregate  (cost=755214.48..755214.49 rows=1 width=64)
+               ->  Parallel Hash Join  (cost=719271.19..752402.00 rows=160713 width=33)
+                     Hash Cond: (part.p_partkey = lineitem.l_partkey)
+                     ->  Parallel Seq Scan on part  (cost=0.00..24648.67 rows=416667 width=25)
+                     ->  Parallel Hash  (cost=717262.27..717262.27 rows=160713 width=20)
+                           ->  Parallel Bitmap Heap Scan on lineitem  (cost=9906.11..717262.27 rows=160713 width=20)
+                                 Recheck Cond: ((l_shipdate >= '1995-09-01'::date) AND (l_shipdate < '1995-10-01 00:00:00'::timestamp without time zone))
+                                 ->  Bitmap Index Scan on idx_lineitem_shipdate  (cost=0.00..9809.68 rows=385712 width=0)
+                                       Index Cond: ((l_shipdate >= '1995-09-01'::date) AND (l_shipdate < '1995-10-01 00:00:00'::timestamp without time zone))
+(12 rows)
+
