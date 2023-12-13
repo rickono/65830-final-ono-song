@@ -28,6 +28,18 @@ def load_pandas():
     return results
 
 
+def which_bucket(b):
+    buckets = [128 * 10e3, 4 * 10e6, 16 * 10e6, float('inf')]
+    for index, item in enumerate(buckets):
+        if item > b:
+            return index
+
+
+def get_join_sizes(sf):
+    with open(f'../explain/{sf}/costs/join_metrics.json', 'r') as f:
+        return json.loads(f.read())['all']
+
+
 # Plot the postgres queries, 1-5 for each query to show warm vs. cold cache
 def pg_cache_warming():
     results = load_postgres()
@@ -130,11 +142,12 @@ def pd_vs_pg_scatter():
     plt.show()
 
 
-def pd_vs_pg_bar():
+def pd_vs_pg_bar(denom='pandas'):
     pd_results = load_pandas()
     pg_results = load_postgres()
 
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
+    bucket_colors = ['red', 'blue', 'green', 'orange']
 
     for i, sf in enumerate(min(pd_scale_factors, pg_scale_factors)):
         subp = ax[i // 2, i % 2]
@@ -146,13 +159,24 @@ def pd_vs_pg_bar():
             pd_perf = min(pd_sf[query])
             pg_perf = min(pg_sf[query])
             queries.append(query)
-            proportion.append(pg_perf / pd_perf)
+            if denom == 'pandas':
+                proportion.append(pg_perf / pd_perf)
+            else:
+                proportion.append(pd_perf / pg_perf)
+
+        join_sizes = []
+        if sf > 4:
+            join_sizes = get_join_sizes(f'sf{sf}')
+            print(join_sizes)
+        buckets = [which_bucket(s) for s in join_sizes]
+        colors = [bucket_colors[b] for b in buckets]
 
         subp.set_title(f'Scale factor {sf}')
         subp.set_xlabel('Query')
         subp.set_ylabel('Postgres runtime / Pandas runtime')
-        subp.bar(queries, proportion)
+        subp.bar(queries, proportion, color=colors)
         subp.axhline(y=1, color='red', linestyle='--')
+        subp.set_xticks([q for i, q in enumerate(queries) if i % 2 == 0])
 
     fig.suptitle('Postgres vs. Pandas runtimes', fontsize=16)
     plt.tight_layout()
@@ -161,5 +185,6 @@ def pd_vs_pg_bar():
 
 # pd_vs_pg_scatter()
 pd_vs_pg_bar()
+pd_vs_pg_bar(denom='postgres')
 # pd_cache_warming_prop()
 # pg_cache_warming_prop()

@@ -1,0 +1,1 @@
+Nested Loop Semi Join  (cost=7952.82..547158.47 rows=6547 width=16)

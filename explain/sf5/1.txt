@@ -1,0 +1,39 @@
+explain -- $ID$
+-- TPC-H/TPC-R Pricing Summary Report Query (Q1)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	l_returnflag,
+	l_linestatus,
+	sum(l_quantity) as sum_qty,
+	sum(l_extendedprice) as sum_base_price,
+	sum(l_extendedprice * (1 - l_discount)) as sum_disc_price,
+	sum(l_extendedprice * (1 - l_discount) * (1 + l_tax)) as sum_charge,
+	avg(l_quantity) as avg_qty,
+	avg(l_extendedprice) as avg_price,
+	avg(l_discount) as avg_disc,
+	count(*) as count_order
+from
+	lineitem
+where
+	l_shipdate <= date '1998-12-01' - interval '90' day
+group by
+	l_returnflag,
+	l_linestatus
+order by
+	l_returnflag,
+	l_linestatus;
+                                              QUERY PLAN                                              
+------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=1195527.32..1195529.27 rows=6 width=236)
+   Group Key: l_returnflag, l_linestatus
+   ->  Gather Merge  (cost=1195527.32..1195528.72 rows=12 width=236)
+         Workers Planned: 2
+         ->  Sort  (cost=1194527.29..1194527.31 rows=6 width=236)
+               Sort Key: l_returnflag, l_linestatus
+               ->  Partial HashAggregate  (cost=1194527.08..1194527.22 rows=6 width=236)
+                     Group Key: l_returnflag, l_linestatus
+                     ->  Parallel Seq Scan on lineitem  (cost=0.00..763644.92 rows=12310919 width=25)
+                           Filter: (l_shipdate <= '1998-09-02 00:00:00'::timestamp without time zone)
+(10 rows)
+
