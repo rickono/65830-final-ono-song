@@ -1,0 +1,88 @@
+explain -- $ID$
+-- TPC-H/TPC-R Minimum Cost Supplier Query (Q2)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	s_acctbal,
+	s_name,
+	n_name,
+	p_partkey,
+	p_mfgr,
+	s_address,
+	s_phone,
+	s_comment
+from
+	part,
+	supplier,
+	partsupp,
+	nation,
+	region
+where
+	p_partkey = ps_partkey
+	and s_suppkey = ps_suppkey
+	and p_size = 15
+	and p_type like '%BRASS'
+	and s_nationkey = n_nationkey
+	and n_regionkey = r_regionkey
+	and r_name = 'EUROPE'
+	and ps_supplycost = (
+		select
+			min(ps_supplycost)
+		from
+			partsupp,
+			supplier,
+			nation,
+			region
+		where
+			p_partkey = ps_partkey
+			and s_suppkey = ps_suppkey
+			and s_nationkey = n_nationkey
+			and n_regionkey = r_regionkey
+			and r_name = 'EUROPE'
+	)
+order by
+	s_acctbal desc,
+	n_name,
+	s_name,
+	p_partkey;
+                                                              QUERY PLAN                                                               
+---------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=108941.75..108941.76 rows=1 width=192)
+   Sort Key: supplier.s_acctbal DESC, nation.n_name, supplier.s_name, part.p_partkey
+   ->  Hash Join  (cost=54958.76..108941.74 rows=1 width=192)
+         Hash Cond: ((part.p_partkey = partsupp.ps_partkey) AND ((SubPlan 1) = partsupp.ps_supplycost))
+         ->  Gather  (cost=1000.00..11828.90 rows=1359 width=30)
+               Workers Planned: 2
+               ->  Parallel Seq Scan on part  (cost=0.00..10693.00 rows=566 width=30)
+                     Filter: (((p_type)::text ~~ '%BRASS'::text) AND (p_size = 15))
+         ->  Hash  (cost=41347.40..41347.40 rows=319957 width=176)
+               ->  Nested Loop  (cost=10.55..41347.40 rows=319957 width=176)
+                     ->  Nested Loop  (cost=10.12..459.76 rows=4000 width=166)
+                           ->  Hash Join  (cost=1.07..2.45 rows=5 width=30)
+                                 Hash Cond: (nation.n_regionkey = region.r_regionkey)
+                                 ->  Seq Scan on nation  (cost=0.00..1.25 rows=25 width=38)
+                                 ->  Hash  (cost=1.06..1.06 rows=1 width=4)
+                                       ->  Seq Scan on region  (cost=0.00..1.06 rows=1 width=4)
+                                             Filter: (r_name = 'EUROPE'::bpchar)
+                           ->  Bitmap Heap Scan on supplier  (cost=9.05..83.46 rows=800 width=148)
+                                 Recheck Cond: (s_nationkey = nation.n_nationkey)
+                                 ->  Bitmap Index Scan on idx_supplier_nation_key  (cost=0.00..8.85 rows=800 width=0)
+                                       Index Cond: (s_nationkey = nation.n_nationkey)
+                     ->  Index Scan using idx_partsupp_suppkey on partsupp  (cost=0.43..9.42 rows=80 width=22)
+                           Index Cond: (ps_suppkey = supplier.s_suppkey)
+         SubPlan 1
+           ->  Aggregate  (cost=51.96..51.97 rows=1 width=32)
+                 ->  Nested Loop  (cost=0.85..51.95 rows=1 width=6)
+                       Join Filter: (nation_1.n_regionkey = region_1.r_regionkey)
+                       ->  Seq Scan on region region_1  (cost=0.00..1.06 rows=1 width=4)
+                             Filter: (r_name = 'EUROPE'::bpchar)
+                       ->  Nested Loop  (cost=0.85..50.83 rows=5 width=14)
+                             ->  Nested Loop  (cost=0.71..50.05 rows=5 width=14)
+                                   ->  Index Scan using idx_partsupp_partkey on partsupp partsupp_1  (cost=0.43..8.52 rows=5 width=14)
+                                         Index Cond: (ps_partkey = part.p_partkey)
+                                   ->  Index Scan using supplier_pkey on supplier supplier_1  (cost=0.29..8.30 rows=1 width=12)
+                                         Index Cond: (s_suppkey = partsupp_1.ps_suppkey)
+                             ->  Index Scan using nation_pkey on nation nation_1  (cost=0.14..0.16 rows=1 width=12)
+                                   Index Cond: (n_nationkey = supplier_1.s_nationkey)
+(37 rows)
+

@@ -1,0 +1,7 @@
+ Sort  (cost=67113.61..67114.11 rows=200 width=16)
+   ->  HashAggregate  (cost=67103.97..67105.97 rows=200 width=16)
+         ->  HashAggregate  (cost=63353.97..64853.97 rows=150000 width=12)
+               ->  Hash Right Join  (cost=5781.42..56005.49 rows=1469697 width=8)
+                     ->  Seq Scan on orders  (cost=0.00..46366.00 rows=1469697 width=12)
+                     ->  Hash  (cost=3906.42..3906.42 rows=150000 width=4)
+                           ->  Index Only Scan using customer_pkey on customer  (cost=0.42..3906.42 rows=150000 width=4)

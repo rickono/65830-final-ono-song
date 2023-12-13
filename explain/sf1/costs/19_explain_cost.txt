@@ -1,0 +1,6 @@
+ Finalize Aggregate  (cost=33681.45..33681.46 rows=1 width=32)
+   ->  Gather  (cost=33681.23..33681.44 rows=2 width=32)
+         ->  Partial Aggregate  (cost=32681.23..32681.24 rows=1 width=32)
+               ->  Nested Loop  (cost=0.43..32680.87 rows=48 width=12)
+                     ->  Parallel Seq Scan on part  (cost=0.00..7638.67 rows=209 width=30)
+                     ->  Index Scan using idx_lineitem_part_supp on lineitem  (cost=0.43..119.81 rows=1 width=25)

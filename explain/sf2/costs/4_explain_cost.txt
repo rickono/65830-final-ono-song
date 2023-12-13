@@ -1,0 +1,8 @@
+ Finalize GroupAggregate  (cost=101361.45..101407.13 rows=5 width=24)
+   ->  Gather Merge  (cost=101361.45..101407.03 rows=10 width=24)
+         ->  Partial GroupAggregate  (cost=100361.43..100405.85 rows=5 width=24)
+               ->  Sort  (cost=100361.43..100376.22 rows=5916 width=16)
+                     ->  Nested Loop Semi Join  (cost=1569.27..99990.78 rows=5916 width=16)
+                           ->  Parallel Bitmap Heap Scan on orders  (cost=1568.83..57534.83 rows=47333 width=20)
+                                 ->  Bitmap Index Scan on idx_orders_orderdate  (cost=0.00..1540.43 rows=113600 width=0)
+                           ->  Index Scan using idx_lineitem_orderkey on lineitem  (cost=0.43..4.99 rows=11 width=8)

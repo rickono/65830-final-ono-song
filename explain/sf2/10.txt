@@ -1,0 +1,65 @@
+explain -- $ID$
+-- TPC-H/TPC-R Returned Item Reporting Query (Q10)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	c_custkey,
+	c_name,
+	sum(l_extendedprice * (1 - l_discount)) as revenue,
+	c_acctbal,
+	n_name,
+	c_address,
+	c_phone,
+	c_comment
+from
+	customer,
+	orders,
+	lineitem,
+	nation
+where
+	c_custkey = o_custkey
+	and l_orderkey = o_orderkey
+	and o_orderdate >= date '1993-10-01'
+	and o_orderdate < date '1993-10-01' + interval '3' month
+	and l_returnflag = 'R'
+	and c_nationkey = n_nationkey
+group by
+	c_custkey,
+	c_name,
+	c_acctbal,
+	c_phone,
+	n_name,
+	c_address,
+	c_comment
+order by
+	revenue desc;
+                                                                                       QUERY PLAN                                                                                       
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=362977.48..363269.09 rows=116641 width=202)
+   Sort Key: (sum((lineitem.l_extendedprice * ('1'::numeric - lineitem.l_discount)))) DESC
+   ->  Finalize GroupAggregate  (cost=326611.34..341597.14 rows=116641 width=202)
+         Group Key: customer.c_custkey, nation.n_name
+         ->  Gather Merge  (cost=326611.34..339167.13 rows=97200 width=202)
+               Workers Planned: 2
+               ->  Partial GroupAggregate  (cost=325611.31..326947.81 rows=48600 width=202)
+                     Group Key: customer.c_custkey, nation.n_name
+                     ->  Sort  (cost=325611.31..325732.81 rows=48600 width=182)
+                           Sort Key: customer.c_custkey, nation.n_name
+                           ->  Hash Join  (cost=307091.18..317509.13 rows=48600 width=182)
+                                 Hash Cond: (customer.c_nationkey = nation.n_nationkey)
+                                 ->  Parallel Hash Join  (cost=307089.61..317358.36 rows=48600 width=164)
+                                       Hash Cond: (customer.c_custkey = orders.o_custkey)
+                                       ->  Parallel Seq Scan on customer  (cost=0.00..8660.00 rows=125000 width=152)
+                                       ->  Parallel Hash  (cost=306482.11..306482.11 rows=48600 width=20)
+                                             ->  Nested Loop  (cost=1648.27..306482.11 rows=48600 width=20)
+                                                   ->  Parallel Bitmap Heap Scan on orders  (cost=1647.84..57649.82 rows=49732 width=12)
+                                                         Recheck Cond: ((o_orderdate >= '1993-10-01'::date) AND (o_orderdate < '1994-01-01 00:00:00'::timestamp without time zone))
+                                                         ->  Bitmap Index Scan on idx_orders_orderdate  (cost=0.00..1618.00 rows=119357 width=0)
+                                                               Index Cond: ((o_orderdate >= '1993-10-01'::date) AND (o_orderdate < '1994-01-01 00:00:00'::timestamp without time zone))
+                                                   ->  Index Scan using idx_lineitem_orderkey on lineitem  (cost=0.43..4.92 rows=8 width=20)
+                                                         Index Cond: (l_orderkey = orders.o_orderkey)
+                                                         Filter: (l_returnflag = 'R'::bpchar)
+                                 ->  Hash  (cost=1.25..1.25 rows=25 width=30)
+                                       ->  Seq Scan on nation  (cost=0.00..1.25 rows=25 width=30)
+(26 rows)
+

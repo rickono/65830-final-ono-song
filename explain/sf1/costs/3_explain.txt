@@ -1,0 +1,2 @@
+Nested Loop  (cost=4642.57..136381.57 rows=129855 width=28)
+Hash Join  (cost=4642.14..40863.10 rows=60235 width=12)

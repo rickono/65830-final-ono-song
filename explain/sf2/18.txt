@@ -1,0 +1,65 @@
+explain -- $ID$
+-- TPC-H/TPC-R Large Volume Customer Query (Q18)
+-- Function Query Definition
+-- Approved February 1998
+select
+	c_name,
+	c_custkey,
+	o_orderkey,
+	o_orderdate,
+	o_totalprice,
+	sum(l_quantity)
+from
+	customer,
+	orders,
+	lineitem
+where
+	o_orderkey in (
+		select
+			l_orderkey
+		from
+			lineitem
+		group by
+			l_orderkey having
+				sum(l_quantity) > 300
+	)
+	and c_custkey = o_custkey
+	and o_orderkey = l_orderkey
+group by
+	c_name,
+	c_custkey,
+	o_orderkey,
+	o_orderdate,
+	o_totalprice
+order by
+	o_totalprice desc,
+	o_orderdate;
+                                                                                   QUERY PLAN                                                                                   
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=890683.27..891933.04 rows=499910 width=71)
+   Sort Key: orders.o_totalprice DESC, orders.o_orderdate
+   ->  Finalize GroupAggregate  (cost=759670.51..822857.02 rows=499910 width=71)
+         Group Key: customer.c_custkey, orders.o_orderkey
+         ->  Gather Merge  (cost=759670.51..812442.22 rows=416592 width=71)
+               Workers Planned: 2
+               ->  Partial GroupAggregate  (cost=758670.48..763357.14 rows=208296 width=71)
+                     Group Key: customer.c_custkey, orders.o_orderkey
+                     ->  Sort  (cost=758670.48..759191.22 rows=208296 width=44)
+                           Sort Key: customer.c_custkey, orders.o_orderkey
+                           ->  Nested Loop  (cost=637834.75..733860.83 rows=208296 width=44)
+                                 ->  Parallel Hash Join  (cost=637834.32..647180.09 rows=52086 width=47)
+                                       Hash Cond: (customer.c_custkey = orders.o_custkey)
+                                       ->  Parallel Seq Scan on customer  (cost=0.00..8660.00 rows=125000 width=23)
+                                       ->  Parallel Hash  (cost=637183.24..637183.24 rows=52086 width=32)
+                                             ->  Hash Join  (cost=566144.59..637183.24 rows=52086 width=32)
+                                                   Hash Cond: (orders.o_orderkey = lineitem_1.l_orderkey)
+                                                   ->  Parallel Seq Scan on orders  (cost=0.00..67757.11 rows=1250111 width=24)
+                                                   ->  Hash  (cost=564582.02..564582.02 rows=125006 width=8)
+                                                         ->  GroupAggregate  (cost=0.43..564582.02 rows=125006 width=8)
+                                                               Group Key: lineitem_1.l_orderkey
+                                                               Filter: (sum(lineitem_1.l_quantity) > '300'::numeric)
+                                                               ->  Index Scan using idx_lineitem_orderkey on lineitem lineitem_1  (cost=0.43..498965.17 rows=11998316 width=13)
+                                 ->  Index Scan using idx_lineitem_orderkey on lineitem  (cost=0.43..1.34 rows=32 width=13)
+                                       Index Cond: (l_orderkey = orders.o_orderkey)
+(25 rows)
+

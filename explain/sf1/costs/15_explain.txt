@@ -1,0 +1,1 @@
+Merge Join  (cost=271733.40..272263.79 rows=50 width=103)

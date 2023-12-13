@@ -1,0 +1,8 @@
+ Finalize Aggregate  (cost=756214.72..756214.73 rows=1 width=32)
+   ->  Gather  (cost=756214.48..756214.69 rows=2 width=64)
+         ->  Partial Aggregate  (cost=755214.48..755214.49 rows=1 width=64)
+               ->  Parallel Hash Join  (cost=719271.19..752402.00 rows=160713 width=33)
+                     ->  Parallel Seq Scan on part  (cost=0.00..24648.67 rows=416667 width=25)
+                     ->  Parallel Hash  (cost=717262.27..717262.27 rows=160713 width=20)
+                           ->  Parallel Bitmap Heap Scan on lineitem  (cost=9906.11..717262.27 rows=160713 width=20)
+                                 ->  Bitmap Index Scan on idx_lineitem_shipdate  (cost=0.00..9809.68 rows=385712 width=0)

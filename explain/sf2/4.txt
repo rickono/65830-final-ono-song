@@ -1,0 +1,45 @@
+explain -- $ID$
+-- TPC-H/TPC-R Order Priority Checking Query (Q4)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	o_orderpriority,
+	count(*) as order_count
+from
+	orders
+where
+	o_orderdate >= date '1993-07-01'
+	and o_orderdate < date '1993-07-01' + interval '3' month
+	and exists (
+		select
+			*
+		from
+			lineitem
+		where
+			l_orderkey = o_orderkey
+			and l_commitdate < l_receiptdate
+	)
+group by
+	o_orderpriority
+order by
+	o_orderpriority;
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=101361.45..101407.13 rows=5 width=24)
+   Group Key: orders.o_orderpriority
+   ->  Gather Merge  (cost=101361.45..101407.03 rows=10 width=24)
+         Workers Planned: 2
+         ->  Partial GroupAggregate  (cost=100361.43..100405.85 rows=5 width=24)
+               Group Key: orders.o_orderpriority
+               ->  Sort  (cost=100361.43..100376.22 rows=5916 width=16)
+                     Sort Key: orders.o_orderpriority
+                     ->  Nested Loop Semi Join  (cost=1569.27..99990.78 rows=5916 width=16)
+                           ->  Parallel Bitmap Heap Scan on orders  (cost=1568.83..57534.83 rows=47333 width=20)
+                                 Recheck Cond: ((o_orderdate >= '1993-07-01'::date) AND (o_orderdate < '1993-10-01 00:00:00'::timestamp without time zone))
+                                 ->  Bitmap Index Scan on idx_orders_orderdate  (cost=0.00..1540.43 rows=113600 width=0)
+                                       Index Cond: ((o_orderdate >= '1993-07-01'::date) AND (o_orderdate < '1993-10-01 00:00:00'::timestamp without time zone))
+                           ->  Index Scan using idx_lineitem_orderkey on lineitem  (cost=0.43..4.99 rows=11 width=8)
+                                 Index Cond: (l_orderkey = orders.o_orderkey)
+                                 Filter: (l_commitdate < l_receiptdate)
+(16 rows)
+

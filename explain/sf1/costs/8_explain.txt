@@ -1,0 +1,7 @@
+Hash Join  (cost=5.64..75375.19 rows=1015 width=70)
+Nested Loop  (cost=4.07..75367.97 rows=1015 width=24)
+Hash Join  (cost=3.79..75058.94 rows=1021 width=24)
+Nested Loop  (cost=1.28..75027.08 rows=5103 width=32)
+Nested Loop  (cost=0.86..72612.42 rows=5103 width=32)
+Nested Loop  (cost=0.43..64800.79 rows=16580 width=28)
+Hash Join  (cost=1.07..2.45 rows=5 width=4)

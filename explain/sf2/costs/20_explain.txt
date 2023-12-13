@@ -1,0 +1,2 @@
+Nested Loop  (cost=10.49..503.27 rows=800 width=55)
+Nested Loop  (cost=0.43..210834.18 rows=5386 width=8)

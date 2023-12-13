@@ -1,0 +1,8 @@
+ Aggregate  (cost=407423.88..407423.89 rows=1 width=32)
+   ->  Hash Join  (cost=11739.91..407413.45 rows=4169 width=8)
+         ->  Seq Scan on lineitem  (cost=0.00..362887.16 rows=11998316 width=21)
+         ->  Hash  (cost=11734.70..11734.70 rows=417 width=4)
+               ->  Gather  (cost=1000.00..11734.70 rows=417 width=4)
+                     ->  Parallel Seq Scan on part  (cost=0.00..10693.00 rows=174 width=4)
+           ->  Aggregate  (cost=129.05..129.07 rows=1 width=32)
+                 ->  Index Scan using idx_lineitem_part_supp on lineitem lineitem_1  (cost=0.43..128.97 rows=31 width=5)
