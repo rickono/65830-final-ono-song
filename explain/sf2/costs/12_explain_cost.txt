@@ -1,0 +1,7 @@
+ Finalize GroupAggregate  (cost=447822.66..448323.56 rows=7 width=27)
+   ->  Gather Merge  (cost=447822.66..448323.38 rows=14 width=27)
+         ->  Partial GroupAggregate  (cost=446822.63..447321.74 rows=7 width=27)
+               ->  Sort  (cost=446822.63..446885.01 rows=24952 width=27)
+                     ->  Nested Loop  (cost=0.43..445000.28 rows=24952 width=27)
+                           ->  Parallel Seq Scan on lineitem  (cost=0.00..355388.21 rows=24952 width=19)
+                           ->  Index Scan using orders_pkey on orders  (cost=0.43..3.59 rows=1 width=20)

@@ -1,5 +1,7 @@
 import json
+import math
 import matplotlib.pyplot as plt
+import numpy as np
 
 pd_results_dir = './pd_results'
 pg_results_dir = './pg_results'
@@ -28,7 +30,7 @@ def load_pandas():
     return results
 
 
-def which_bucket(b):
+def which_bucket_joinsize(b):
     buckets = [128 * 10e3, 4 * 10e6, 16 * 10e6, float('inf')]
     for index, item in enumerate(buckets):
         if item > b:
@@ -37,6 +39,11 @@ def which_bucket(b):
 
 def get_join_sizes(sf):
     with open(f'../explain/{sf}/costs/join_metrics.json', 'r') as f:
+        return json.loads(f.read())['all']
+
+
+def get_costs(sf):
+    with open(f'../explain/{sf}/costs/join_metrics_cost.json', 'r') as f:
         return json.loads(f.read())['all']
 
 
@@ -142,12 +149,13 @@ def pd_vs_pg_scatter():
     plt.show()
 
 
-def pd_vs_pg_bar(denom='pandas'):
+def pd_vs_pg_bar():
     pd_results = load_pandas()
     pg_results = load_postgres()
 
     fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
-    bucket_colors = ['red', 'blue', 'green', 'orange']
+    bucket_colors = [(0.594508, 0.175701, 0.501241), (0.828886, 0.262229, 0.430644),
+                     (0.973381, 0.46152, 0.361965), (0.997341, 0.733545, 0.505167)]
 
     for i, sf in enumerate(min(pd_scale_factors, pg_scale_factors)):
         subp = ax[i // 2, i % 2]
@@ -159,23 +167,57 @@ def pd_vs_pg_bar(denom='pandas'):
             pd_perf = min(pd_sf[query])
             pg_perf = min(pg_sf[query])
             queries.append(query)
-            if denom == 'pandas':
-                proportion.append(pg_perf / pd_perf)
-            else:
-                proportion.append(pd_perf / pg_perf)
+            proportion.append(pg_perf / pd_perf)
 
-        join_sizes = []
-        if sf > 4:
-            join_sizes = get_join_sizes(f'sf{sf}')
-            print(join_sizes)
-        buckets = [which_bucket(s) for s in join_sizes]
+        join_sizes = get_join_sizes(f'sf{sf}')
+        buckets = [which_bucket_joinsize(s) for s in join_sizes]
         colors = [bucket_colors[b] for b in buckets]
+
+        proportion = [math.log2(x) for x in proportion]
+        print(f'corcoef={np.corrcoef(np.array(proportion), join_sizes)[0, 1]}')
 
         subp.set_title(f'Scale factor {sf}')
         subp.set_xlabel('Query')
-        subp.set_ylabel('Postgres runtime / Pandas runtime')
+        subp.set_ylabel('log2(Postgres runtime / Pandas runtime)')
         subp.bar(queries, proportion, color=colors)
-        subp.axhline(y=1, color='red', linestyle='--')
+        subp.set_xticks([q for i, q in enumerate(queries) if i % 2 == 0])
+
+    fig.suptitle('Postgres vs. Pandas runtimes', fontsize=16)
+    plt.tight_layout()
+    plt.show()
+
+
+def pd_vs_pg_bar_cost():
+    pd_results = load_pandas()
+    pg_results = load_postgres()
+
+    fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(10, 8))
+    cmap = plt.get_cmap('viridis')
+
+    for i, sf in enumerate(min(pd_scale_factors, pg_scale_factors)):
+        subp = ax[i // 2, i % 2]
+        pd_sf = pd_results[f'sf{sf}']['queries']
+        pg_sf = pg_results[f'sf{sf}']['queries']
+        queries = []
+        proportion = []
+        for query in pd_sf:
+            pd_perf = min(pd_sf[query])
+            pg_perf = min(pg_sf[query])
+            queries.append(query)
+            proportion.append(pg_perf / pd_perf)
+
+        proportion = [math.log2(x) for x in proportion]
+
+        costs = get_costs(f'sf{sf}')
+        print(f'corcoef={np.corrcoef(np.array(proportion), costs)[0, 1]}')
+        max_cost = max(costs)
+
+        colors = [cmap(c / max_cost) for c in costs]
+
+        subp.set_title(f'Scale factor {sf}')
+        subp.set_xlabel('Query')
+        subp.set_ylabel('log2(Postgres runtime / Pandas runtime)')
+        subp.bar(queries, proportion, color=colors)
         subp.set_xticks([q for i, q in enumerate(queries) if i % 2 == 0])
 
     fig.suptitle('Postgres vs. Pandas runtimes', fontsize=16)
@@ -185,6 +227,7 @@ def pd_vs_pg_bar(denom='pandas'):
 
 # pd_vs_pg_scatter()
 pd_vs_pg_bar()
-pd_vs_pg_bar(denom='postgres')
-# pd_cache_warming_prop()
+pd_vs_pg_bar_cost()
+pd_cache_warming_prop()
+pg_cache_warming_prop()
 # pg_cache_warming_prop()

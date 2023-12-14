@@ -1,0 +1,79 @@
+explain -- $ID$
+-- TPC-H/TPC-R Suppliers Who Kept Orders Waiting Query (Q21)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	s_name,
+	count(*) as numwait
+from
+	supplier,
+	lineitem l1,
+	orders,
+	nation
+where
+	s_suppkey = l1.l_suppkey
+	and o_orderkey = l1.l_orderkey
+	and o_orderstatus = 'F'
+	and l1.l_receiptdate > l1.l_commitdate
+	and exists (
+		select
+			*
+		from
+			lineitem l2
+		where
+			l2.l_orderkey = l1.l_orderkey
+			and l2.l_suppkey <> l1.l_suppkey
+	)
+	and not exists (
+		select
+			*
+		from
+			lineitem l3
+		where
+			l3.l_orderkey = l1.l_orderkey
+			and l3.l_suppkey <> l1.l_suppkey
+			and l3.l_receiptdate > l3.l_commitdate
+	)
+	and s_nationkey = n_nationkey
+	and n_name = 'SAUDI ARABIA'
+group by
+	s_name
+order by
+	numwait desc,
+	s_name;
+                                                                     QUERY PLAN                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=355265.82..355265.83 rows=1 width=34)
+   Sort Key: (count(*)) DESC, supplier.s_name
+   ->  GroupAggregate  (cost=355265.79..355265.81 rows=1 width=34)
+         Group Key: supplier.s_name
+         ->  Sort  (cost=355265.79..355265.80 rows=1 width=26)
+               Sort Key: supplier.s_name
+               ->  Nested Loop  (cost=1514.57..355265.78 rows=1 width=26)
+                     ->  Nested Loop Semi Join  (cost=1514.14..355265.27 rows=1 width=42)
+                           ->  Gather  (cost=1513.70..355263.91 rows=1 width=42)
+                                 Workers Planned: 2
+                                 ->  Nested Loop Anti Join  (cost=513.70..354263.81 rows=1 width=42)
+                                       ->  Hash Join  (cost=513.27..312823.59 rows=66598 width=42)
+                                             Hash Cond: (l1.l_suppkey = supplier.s_suppkey)
+                                             ->  Parallel Seq Scan on lineitem l1  (cost=0.00..305395.23 rows=1666433 width=16)
+                                                   Filter: (l_receiptdate > l_commitdate)
+                                             ->  Hash  (cost=503.27..503.27 rows=800 width=30)
+                                                   ->  Nested Loop  (cost=10.49..503.27 rows=800 width=30)
+                                                         ->  Seq Scan on nation  (cost=0.00..1.31 rows=1 width=4)
+                                                               Filter: (n_name = 'SAUDI ARABIA'::bpchar)
+                                                         ->  Bitmap Heap Scan on supplier  (cost=10.49..493.95 rows=800 width=38)
+                                                               Recheck Cond: (s_nationkey = nation.n_nationkey)
+                                                               ->  Bitmap Index Scan on idx_supplier_nation_key  (cost=0.00..10.29 rows=800 width=0)
+                                                                     Index Cond: (s_nationkey = nation.n_nationkey)
+                                       ->  Index Scan using idx_lineitem_orderkey on lineitem l3  (cost=0.43..1.42 rows=11 width=16)
+                                             Index Cond: (l_orderkey = l1.l_orderkey)
+                                             Filter: ((l_receiptdate > l_commitdate) AND (l_suppkey <> l1.l_suppkey))
+                           ->  Index Scan using idx_lineitem_orderkey on lineitem l2  (cost=0.43..1.34 rows=32 width=16)
+                                 Index Cond: (l_orderkey = l1.l_orderkey)
+                                 Filter: (l_suppkey <> l1.l_suppkey)
+                     ->  Index Scan using orders_pkey on orders  (cost=0.43..0.51 rows=1 width=4)
+                           Index Cond: (o_orderkey = l1.l_orderkey)
+                           Filter: (o_orderstatus = 'F'::bpchar)
+(32 rows)
+

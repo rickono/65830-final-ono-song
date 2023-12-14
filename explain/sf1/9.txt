@@ -1,0 +1,66 @@
+explain -- $ID$
+-- TPC-H/TPC-R Product Type Profit Measure Query (Q9)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	nation,
+	o_year,
+	sum(amount) as sum_profit
+from
+	(
+		select
+			n_name as nation,
+			extract(year from o_orderdate) as o_year,
+			l_extendedprice * (1 - l_discount) - ps_supplycost * l_quantity as amount
+		from
+			part,
+			supplier,
+			lineitem,
+			partsupp,
+			orders,
+			nation
+		where
+			s_suppkey = l_suppkey
+			and ps_suppkey = l_suppkey
+			and ps_partkey = l_partkey
+			and p_partkey = l_partkey
+			and o_orderkey = l_orderkey
+			and s_nationkey = n_nationkey
+			and p_name like '%green%'
+	) as profit
+group by
+	nation,
+	o_year
+order by
+	nation,
+	o_year desc;
+                                                                 QUERY PLAN                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=42355.38..42371.78 rows=122 width=90)
+   Group Key: nation.n_name, (EXTRACT(year FROM orders.o_orderdate))
+   ->  Gather Merge  (cost=42355.38..42368.93 rows=102 width=90)
+         Workers Planned: 2
+         ->  Partial GroupAggregate  (cost=41355.35..41357.14 rows=51 width=90)
+               Group Key: nation.n_name, (EXTRACT(year FROM orders.o_orderdate))
+               ->  Sort  (cost=41355.35..41355.48 rows=51 width=81)
+                     Sort Key: nation.n_name, (EXTRACT(year FROM orders.o_orderdate)) DESC
+                     ->  Hash Join  (cost=3.13..41353.91 rows=51 width=81)
+                           Hash Cond: (supplier.s_nationkey = nation.n_nationkey)
+                           ->  Nested Loop  (cost=1.57..41352.06 rows=51 width=35)
+                                 ->  Nested Loop  (cost=1.14..41328.29 rows=51 width=39)
+                                       ->  Nested Loop  (cost=0.86..41312.85 rows=51 width=47)
+                                             ->  Nested Loop  (cost=0.42..22599.23 rows=16835 width=26)
+                                                   ->  Parallel Seq Scan on part  (cost=0.00..5138.67 rows=4209 width=4)
+                                                         Filter: ((p_name)::text ~~ '%green%'::text)
+                                                   ->  Index Scan using idx_partsupp_partkey on partsupp  (cost=0.42..4.11 rows=4 width=22)
+                                                         Index Cond: (ps_partkey = part.p_partkey)
+                                             ->  Index Scan using idx_lineitem_part_supp on lineitem  (cost=0.43..1.10 rows=1 width=41)
+                                                   Index Cond: ((l_partkey = partsupp.ps_partkey) AND (l_suppkey = partsupp.ps_suppkey))
+                                       ->  Index Scan using supplier_pkey on supplier  (cost=0.29..0.30 rows=1 width=12)
+                                             Index Cond: (s_suppkey = lineitem.l_suppkey)
+                                 ->  Index Scan using orders_pkey on orders  (cost=0.43..0.47 rows=1 width=8)
+                                       Index Cond: (o_orderkey = lineitem.l_orderkey)
+                           ->  Hash  (cost=1.25..1.25 rows=25 width=30)
+                                 ->  Seq Scan on nation  (cost=0.00..1.25 rows=25 width=30)
+(26 rows)
+

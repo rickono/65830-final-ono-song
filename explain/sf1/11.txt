@@ -1,0 +1,62 @@
+explain -- $ID$
+-- TPC-H/TPC-R Important Stock Identification Query (Q11)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	ps_partkey,
+	sum(ps_supplycost * ps_availqty) as value
+from
+	partsupp,
+	supplier,
+	nation
+where
+	ps_suppkey = s_suppkey
+	and s_nationkey = n_nationkey
+	and n_name = 'GERMANY'
+group by
+	ps_partkey having
+		sum(ps_supplycost * ps_availqty) > (
+			select
+				sum(ps_supplycost * ps_availqty) * 0.0001
+			from
+				partsupp,
+				supplier,
+				nation
+			where
+				ps_suppkey = s_suppkey
+				and s_nationkey = n_nationkey
+				and n_name = 'GERMANY'
+		)
+order by
+	value desc;
+                                                      QUERY PLAN                                                      
+----------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=10439.32..10465.99 rows=10667 width=40)
+   Sort Key: (sum((partsupp.ps_supplycost * (partsupp.ps_availqty)::numeric))) DESC
+   InitPlan 1 (returns $2)
+     ->  Aggregate  (cost=4582.82..4582.83 rows=1 width=32)
+           ->  Nested Loop  (cost=7.81..4342.82 rows=32000 width=10)
+                 ->  Nested Loop  (cost=7.38..254.43 rows=400 width=4)
+                       ->  Seq Scan on nation nation_1  (cost=0.00..1.31 rows=1 width=4)
+                             Filter: (n_name = 'GERMANY'::bpchar)
+                       ->  Bitmap Heap Scan on supplier supplier_1  (cost=7.38..249.12 rows=400 width=12)
+                             Recheck Cond: (s_nationkey = nation_1.n_nationkey)
+                             ->  Bitmap Index Scan on idx_supplier_nation_key  (cost=0.00..7.29 rows=400 width=0)
+                                   Index Cond: (s_nationkey = nation_1.n_nationkey)
+                 ->  Index Scan using idx_partsupp_suppkey on partsupp partsupp_1  (cost=0.42..9.42 rows=80 width=18)
+                       Index Cond: (ps_suppkey = supplier_1.s_suppkey)
+   ->  HashAggregate  (cost=4662.82..5142.82 rows=10667 width=40)
+         Group Key: partsupp.ps_partkey
+         Filter: (sum((partsupp.ps_supplycost * (partsupp.ps_availqty)::numeric)) > $2)
+         ->  Nested Loop  (cost=7.81..4342.82 rows=32000 width=18)
+               ->  Nested Loop  (cost=7.38..254.43 rows=400 width=4)
+                     ->  Seq Scan on nation  (cost=0.00..1.31 rows=1 width=4)
+                           Filter: (n_name = 'GERMANY'::bpchar)
+                     ->  Bitmap Heap Scan on supplier  (cost=7.38..249.12 rows=400 width=12)
+                           Recheck Cond: (s_nationkey = nation.n_nationkey)
+                           ->  Bitmap Index Scan on idx_supplier_nation_key  (cost=0.00..7.29 rows=400 width=0)
+                                 Index Cond: (s_nationkey = nation.n_nationkey)
+               ->  Index Scan using idx_partsupp_suppkey on partsupp  (cost=0.42..9.42 rows=80 width=26)
+                     Index Cond: (ps_suppkey = supplier.s_suppkey)
+(27 rows)
+

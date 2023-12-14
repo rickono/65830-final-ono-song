@@ -1,0 +1,1 @@
+Nested Loop Anti Join  (cost=0.43..11695.25 rows=631 width=38)

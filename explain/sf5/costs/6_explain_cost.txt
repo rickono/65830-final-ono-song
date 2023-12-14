@@ -1,0 +1,4 @@
+ Finalize Aggregate  (cost=890892.31..890892.32 rows=1 width=32)
+   ->  Gather  (cost=890892.09..890892.30 rows=2 width=32)
+         ->  Partial Aggregate  (cost=889892.09..889892.10 rows=1 width=32)
+               ->  Parallel Seq Scan on lineitem  (cost=0.00..888653.65 rows=247688 width=12)

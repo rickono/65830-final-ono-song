@@ -1,0 +1,56 @@
+explain -- $ID$
+-- TPC-H/TPC-R Parts/Supplier Relationship Query (Q16)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	p_brand,
+	p_type,
+	p_size,
+	count(distinct ps_suppkey) as supplier_cnt
+from
+	partsupp,
+	part
+where
+	p_partkey = ps_partkey
+	and p_brand <> 'Brand#45'
+	and p_type not like 'MEDIUM POLISHED%'
+	and p_size in (49, 14, 23, 45, 19, 3, 36, 9)
+	and ps_suppkey not in (
+		select
+			s_suppkey
+		from
+			supplier
+		where
+			s_comment like '%Customer%Complaints%'
+	)
+group by
+	p_brand,
+	p_type,
+	p_size
+order by
+	supplier_cnt desc,
+	p_brand,
+	p_type,
+	p_size;
+                                                                                         QUERY PLAN                                                                                          
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=39315.46..39355.55 rows=16037 width=44)
+   Sort Key: (count(DISTINCT partsupp.ps_suppkey)) DESC, part.p_brand, part.p_type, part.p_size
+   ->  GroupAggregate  (cost=30474.55..38195.34 rows=16037 width=44)
+         Group Key: part.p_brand, part.p_type, part.p_size
+         ->  Gather Merge  (cost=30474.55..37437.15 rows=59782 width=44)
+               Workers Planned: 2
+               ->  Sort  (cost=29474.53..29536.80 rows=24909 width=44)
+                     Sort Key: part.p_brand, part.p_type, part.p_size, partsupp.ps_suppkey
+                     ->  Parallel Hash Join  (cost=6691.45..27655.63 rows=24909 width=44)
+                           Hash Cond: (partsupp.ps_partkey = part.p_partkey)
+                           ->  Parallel Index Only Scan using partsupp_pkey on partsupp  (cost=355.43..20882.09 rows=166667 width=16)
+                                 Filter: (NOT (hashed SubPlan 1))
+                                 SubPlan 1
+                                   ->  Seq Scan on supplier  (cost=0.00..355.00 rows=1 width=4)
+                                         Filter: ((s_comment)::text ~~ '%Customer%Complaints%'::text)
+                           ->  Parallel Hash  (cost=6180.33..6180.33 rows=12455 width=40)
+                                 ->  Parallel Seq Scan on part  (cost=0.00..6180.33 rows=12455 width=40)
+                                       Filter: ((p_brand <> 'Brand#45'::bpchar) AND ((p_type)::text !~~ 'MEDIUM POLISHED%'::text) AND (p_size = ANY ('{49,14,23,45,19,3,36,9}'::integer[])))
+(18 rows)
+

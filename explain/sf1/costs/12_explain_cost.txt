@@ -1,0 +1,8 @@
+ Finalize GroupAggregate  (cost=220701.23..220949.35 rows=7 width=27)
+   ->  Gather Merge  (cost=220701.23..220949.17 rows=14 width=27)
+         ->  Partial GroupAggregate  (cost=219701.20..219947.53 rows=7 width=27)
+               ->  Sort  (cost=219701.20..219731.98 rows=12313 width=27)
+                     ->  Parallel Hash Join  (cost=177916.11..218864.66 rows=12313 width=27)
+                           ->  Parallel Seq Scan on orders  (cost=0.00..33866.00 rows=625000 width=20)
+                           ->  Parallel Hash  (cost=177762.20..177762.20 rows=12313 width=19)
+                                 ->  Parallel Seq Scan on lineitem  (cost=0.00..177762.20 rows=12313 width=19)

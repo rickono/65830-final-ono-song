@@ -1,0 +1,40 @@
+explain -- $ID$
+-- TPC-H/TPC-R Customer Distribution Query (Q13)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	c_count,
+	count(*) as custdist
+from
+	(
+		select
+			c_custkey,
+			count(o_orderkey)
+		from
+			customer left outer join orders on
+				c_custkey = o_custkey
+				and o_comment not like '%special%requests%'
+		group by
+			c_custkey
+	) as c_orders (c_custkey, c_count)
+group by
+	c_count
+order by
+	custdist desc,
+	c_count desc;
+                                                       QUERY PLAN                                                        
+-------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=67113.61..67114.11 rows=200 width=16)
+   Sort Key: (count(*)) DESC, (count(orders.o_orderkey)) DESC
+   ->  HashAggregate  (cost=67103.97..67105.97 rows=200 width=16)
+         Group Key: count(orders.o_orderkey)
+         ->  HashAggregate  (cost=63353.97..64853.97 rows=150000 width=12)
+               Group Key: customer.c_custkey
+               ->  Hash Right Join  (cost=5781.42..56005.49 rows=1469697 width=8)
+                     Hash Cond: (orders.o_custkey = customer.c_custkey)
+                     ->  Seq Scan on orders  (cost=0.00..46366.00 rows=1469697 width=12)
+                           Filter: ((o_comment)::text !~~ '%special%requests%'::text)
+                     ->  Hash  (cost=3906.42..3906.42 rows=150000 width=4)
+                           ->  Index Only Scan using customer_pkey on customer  (cost=0.42..3906.42 rows=150000 width=4)
+(12 rows)
+

@@ -1,0 +1,5 @@
+Nested Loop  (cost=1514.57..355265.78 rows=1 width=26)
+Nested Loop Semi Join  (cost=1514.14..355265.27 rows=1 width=42)
+Nested Loop Anti Join  (cost=513.70..354263.81 rows=1 width=42)
+Hash Join  (cost=513.27..312823.59 rows=66598 width=42)
+Nested Loop  (cost=10.49..503.27 rows=800 width=30)

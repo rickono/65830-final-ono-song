@@ -1,0 +1,41 @@
+explain -- $ID$
+-- TPC-H/TPC-R Small-Quantity-Order Revenue Query (Q17)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	sum(l_extendedprice) / 7.0 as avg_yearly
+from
+	lineitem,
+	part
+where
+	p_partkey = l_partkey
+	and p_brand = 'Brand#23'
+	and p_container = 'MED BOX'
+	and l_quantity < (
+		select
+			0.2 * avg(l_quantity)
+		from
+			lineitem
+		where
+			l_partkey = p_partkey
+	);
+                                                QUERY PLAN                                                
+----------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=204878.93..204878.94 rows=1 width=32)
+   ->  Hash Join  (cost=6368.94..204874.05 rows=1951 width=8)
+         Hash Cond: (lineitem.l_partkey = part.p_partkey)
+         Join Filter: (lineitem.l_quantity < (SubPlan 1))
+         ->  Seq Scan on lineitem  (cost=0.00..181513.28 rows=6001728 width=21)
+         ->  Hash  (cost=6366.50..6366.50 rows=195 width=4)
+               ->  Gather  (cost=1000.00..6366.50 rows=195 width=4)
+                     Workers Planned: 2
+                     ->  Parallel Seq Scan on part  (cost=0.00..5347.00 rows=81 width=4)
+                           Filter: ((p_brand = 'Brand#23'::bpchar) AND (p_container = 'MED BOX'::bpchar))
+         SubPlan 1
+           ->  Aggregate  (cost=123.70..123.72 rows=1 width=32)
+                 ->  Bitmap Heap Scan on lineitem lineitem_1  (cost=4.67..123.63 rows=30 width=5)
+                       Recheck Cond: (l_partkey = part.p_partkey)
+                       ->  Bitmap Index Scan on idx_lineitem_part_supp  (cost=0.00..4.66 rows=30 width=0)
+                             Index Cond: (l_partkey = part.p_partkey)
+(16 rows)
+
