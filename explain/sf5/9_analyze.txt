@@ -1,0 +1,74 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Product Type Profit Measure Query (Q9)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	nation,
+	o_year,
+	sum(amount) as sum_profit
+from
+	(
+		select
+			n_name as nation,
+			extract(year from o_orderdate) as o_year,
+			l_extendedprice * (1 - l_discount) - ps_supplycost * l_quantity as amount
+		from
+			part,
+			supplier,
+			lineitem,
+			partsupp,
+			orders,
+			nation
+		where
+			s_suppkey = l_suppkey
+			and ps_suppkey = l_suppkey
+			and ps_partkey = l_partkey
+			and p_partkey = l_partkey
+			and o_orderkey = l_orderkey
+			and s_nationkey = n_nationkey
+			and p_name like '%green%'
+	) as profit
+group by
+	nation,
+	o_year
+order by
+	nation,
+	o_year desc;
+                                                                                        QUERY PLAN                                                                                         
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=178976.77..178990.28 rows=100 width=90) (actual time=29979.391..30240.001 rows=175 loops=1)
+   Group Key: nation.n_name, (EXTRACT(year FROM orders.o_orderdate))
+   ->  Gather Merge  (cost=178976.77..178987.94 rows=84 width=90) (actual time=29977.890..30239.798 rows=525 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial GroupAggregate  (cost=177976.75..177978.22 rows=42 width=90) (actual time=29784.892..30048.985 rows=175 loops=3)
+               Group Key: nation.n_name, (EXTRACT(year FROM orders.o_orderdate))
+               ->  Sort  (cost=177976.75..177976.85 rows=42 width=81) (actual time=29783.965..29879.446 rows=544106 loops=3)
+                     Sort Key: nation.n_name, (EXTRACT(year FROM orders.o_orderdate)) DESC
+                     Sort Method: external merge  Disk: 35384kB
+                     Worker 0:  Sort Method: external merge  Disk: 35408kB
+                     Worker 1:  Sort Method: external merge  Disk: 35400kB
+                     ->  Hash Join  (cost=3.15..177975.61 rows=42 width=81) (actual time=0.569..29482.352 rows=544106 loops=3)
+                           Hash Cond: (supplier.s_nationkey = nation.n_nationkey)
+                           ->  Nested Loop  (cost=1.59..177973.81 rows=42 width=35) (actual time=0.520..29326.782 rows=544106 loops=3)
+                                 ->  Nested Loop  (cost=1.16..177954.03 rows=42 width=39) (actual time=0.493..27128.023 rows=544106 loops=3)
+                                       ->  Nested Loop  (cost=0.87..177941.10 rows=42 width=47) (actual time=0.463..26485.542 rows=544106 loops=3)
+                                             ->  Nested Loop  (cost=0.43..102769.23 rows=67315 width=26) (actual time=0.354..1388.316 rows=72564 loops=3)
+                                                   ->  Parallel Seq Scan on part  (cost=0.00..25690.33 rows=16835 width=4) (actual time=0.008..219.154 rows=18141 loops=3)
+                                                         Filter: ((p_name)::text ~~ '%green%'::text)
+                                                         Rows Removed by Filter: 315192
+                                                   ->  Index Scan using idx_partsupp_partkey on partsupp  (cost=0.43..4.48 rows=10 width=22) (actual time=0.060..0.064 rows=4 loops=54423)
+                                                         Index Cond: (ps_partkey = part.p_partkey)
+                                             ->  Index Scan using idx_lineitem_part_supp on lineitem  (cost=0.44..1.11 rows=1 width=41) (actual time=0.047..0.345 rows=7 loops=217692)
+                                                   Index Cond: ((l_partkey = partsupp.ps_partkey) AND (l_suppkey = partsupp.ps_suppkey))
+                                       ->  Index Scan using supplier_pkey on supplier  (cost=0.29..0.31 rows=1 width=12) (actual time=0.001..0.001 rows=1 loops=1632317)
+                                             Index Cond: (s_suppkey = lineitem.l_suppkey)
+                                 ->  Index Scan using orders_pkey on orders  (cost=0.43..0.47 rows=1 width=8) (actual time=0.004..0.004 rows=1 loops=1632317)
+                                       Index Cond: (o_orderkey = lineitem.l_orderkey)
+                           ->  Hash  (cost=1.25..1.25 rows=25 width=30) (actual time=0.023..0.024 rows=25 loops=3)
+                                 Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                 ->  Seq Scan on nation  (cost=0.00..1.25 rows=25 width=30) (actual time=0.018..0.019 rows=25 loops=3)
+ Planning Time: 6.324 ms
+ Execution Time: 30241.691 ms
+(34 rows)
+

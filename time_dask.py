@@ -1,6 +1,7 @@
 # adapted from: https://gist.github.com/UranusSeven/55817bf0f304cc24f5eb63b2f1c3e2cd
 # to execute, run "python3 time_pandas.py --data_set 'tpch/dbgen'" from root directory
 
+from tpch_headers import HEADERS
 import argparse
 import functools
 import inspect
@@ -14,8 +15,6 @@ import pandas as pd
 import dask.dataframe as dd
 from dask.distributed import Client
 pd.options.mode.chained_assignment = None
-
-from tpch_headers import HEADERS
 
 
 @functools.lru_cache(maxsize=128)
@@ -36,7 +35,7 @@ def load_lineitem(data_folder: str, use_dask=True, **storage_options) -> dd.Data
     ddf["L_RECEIPTDATE"] = dd.to_datetime(ddf.L_RECEIPTDATE, format="%Y-%m-%d")
     ddf["L_COMMITDATE"] = dd.to_datetime(ddf.L_COMMITDATE, format="%Y-%m-%d")
 
-    return ddf 
+    return ddf
 
 
 @functools.lru_cache(maxsize=128)
@@ -71,7 +70,6 @@ def load_orders(data_folder: str, use_dask=True, **storage_options) -> dd.DataFr
     return ddf
 
 
-
 @functools.lru_cache(maxsize=128)
 def load_customer(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/customer.tbl"
@@ -101,6 +99,7 @@ def load_nation(data_folder: str, use_dask=True, **storage_options) -> dd.DataFr
 
     return ddf
 
+
 @functools.lru_cache(maxsize=128)
 def load_region(data_folder: str, use_dask=True, **storage_options) -> dd.DataFrame:
     data_path = data_folder + "/region.tbl"
@@ -113,7 +112,7 @@ def load_region(data_folder: str, use_dask=True, **storage_options) -> dd.DataFr
         storage_options=storage_options
     )
 
-    return ddf 
+    return ddf
 
 
 @functools.lru_cache(maxsize=128)
@@ -129,7 +128,6 @@ def load_supplier(data_folder: str, use_dask=True,  **storage_options) -> dd.Dat
     )
 
     return ddf
-
 
 
 @functools.lru_cache(maxsize=128)
@@ -158,12 +156,9 @@ def timethis(q: Callable):
             end_time = time.time()
             runtimes.append(end_time - start_time)
         # print(ans)
-<<<<<<< Updated upstream
         print(runtimes)
-=======
-        print(f"{q.__name__.upper()}: {runtimes}")
->>>>>>> Stashed changes
-        print("%s Execution time (s): %f" % (q.__name__.upper(), round(min(runtimes), 5)))
+        print("%s Execution time (s): %f" %
+              (q.__name__.upper(), round(min(runtimes), 5)))
 
     return wrapped
 
@@ -172,7 +167,8 @@ _query_to_datasets: Dict[int, List[str]] = dict()
 
 
 def collect_datasets(func: Callable):
-    _query_to_datasets[int(func.__name__[1:])] = list(inspect.signature(func).parameters)
+    _query_to_datasets[int(func.__name__[1:])] = list(
+        inspect.signature(func).parameters)
     return func
 
 
@@ -273,7 +269,8 @@ def q02(part, partsupp, supplier, nation, region):
             "S_COMMENT",
         ],
     ]
-    partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY", "PS_SUPPLYCOST"]]
+    partsupp_filtered = partsupp.loc[:, [
+        "PS_PARTKEY", "PS_SUPPKEY", "PS_SUPPLYCOST"]]
     ps_s_r_n_merged = s_r_n_merged.merge(
         partsupp_filtered, left_on="S_SUPPKEY", right_on="PS_SUPPKEY", how="inner"
     )
@@ -373,7 +370,7 @@ def q03(lineitem, orders, customer):
         .sum()
         .to_frame()
         .sort_values(["TMP"], ascending=False)
-        .reset_index() # this might be expensive idk
+        .reset_index()  # this might be expensive idk
     )
     res = total.loc[:, ["L_ORDERKEY", "TMP", "O_ORDERDATE", "O_SHIPPRIORITY"]]
     # head implicitly calls compute()
@@ -458,8 +455,10 @@ def q07(lineitem, supplier, orders, customer, nation):
     supplier_filtered = supplier.loc[:, ["S_SUPPKEY", "S_NATIONKEY"]]
     orders_filtered = orders.loc[:, ["O_ORDERKEY", "O_CUSTKEY"]]
     customer_filtered = customer.loc[:, ["C_CUSTKEY", "C_NATIONKEY"]]
-    n1 = nation[(nation["N_NAME"] == "FRANCE")].loc[:, ["N_NATIONKEY", "N_NAME"]]
-    n2 = nation[(nation["N_NAME"] == "GERMANY")].loc[:, ["N_NATIONKEY", "N_NAME"]]
+    n1 = nation[(nation["N_NAME"] == "FRANCE")
+                ].loc[:, ["N_NATIONKEY", "N_NAME"]]
+    n2 = nation[(nation["N_NAME"] == "GERMANY")
+                ].loc[:, ["N_NATIONKEY", "N_NAME"]]
 
     # ----- do nation 1 -----
     N1_C = customer_filtered.merge(
@@ -532,7 +531,8 @@ def q07(lineitem, supplier, orders, customer, nation):
 def q08(part, lineitem, supplier, orders, customer, nation, region):
     part_filtered = part[(part["P_TYPE"] == "ECONOMY ANODIZED STEEL")]
     part_filtered = part_filtered.loc[:, ["P_PARTKEY"]]
-    lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_SUPPKEY", "L_ORDERKEY"]]
+    lineitem_filtered = lineitem.loc[:, [
+        "L_PARTKEY", "L_SUPPKEY", "L_ORDERKEY"]]
     lineitem_filtered["VOLUME"] = lineitem["L_EXTENDEDPRICE"] * (
         1.0 - lineitem["L_DISCOUNT"]
     )
@@ -550,7 +550,8 @@ def q08(part, lineitem, supplier, orders, customer, nation, region):
         & (orders["O_ORDERDATE"] < pd.Timestamp("1997-01-01"))
     ]
     orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].dt.year
-    orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY", "O_YEAR"]]
+    orders_filtered = orders_filtered.loc[:, [
+        "O_ORDERKEY", "O_CUSTKEY", "O_YEAR"]]
     total = total.merge(
         orders_filtered, left_on="L_ORDERKEY", right_on="O_ORDERKEY", how="inner"
     )
@@ -636,7 +637,7 @@ def q10(lineitem, orders, customer, nation):
             "C_ADDRESS",
             "C_COMMENT",
         ],
-    
+
         sort=False,
     )["TMP"].sum().to_frame()
     total = gb.sort_values("TMP", ascending=False)
@@ -654,7 +655,8 @@ def q11(partsupp, supplier, nation):
     ps_supp_merge = partsupp_filtered.merge(
         supplier_filtered, left_on="PS_SUPPKEY", right_on="S_SUPPKEY", how="inner"
     )
-    ps_supp_merge = ps_supp_merge.loc[:, ["PS_PARTKEY", "S_NATIONKEY", "TOTAL_COST"]]
+    ps_supp_merge = ps_supp_merge.loc[:, [
+        "PS_PARTKEY", "S_NATIONKEY", "TOTAL_COST"]]
     nation_filtered = nation[(nation["N_NAME"] == "GERMANY")]
     nation_filtered = nation_filtered.loc[:, ["N_NATIONKEY"]]
     ps_supp_n_merge = ps_supp_merge.merge(
@@ -702,12 +704,16 @@ def q12(lineitem, orders):
     # total = jn.groupby("L_SHIPMODE")["O_ORDERPRIORITY"].agg([custom_g1, custom_g2])
 
     # Define conditions
-    condition_g1 = ((jn["O_ORDERPRIORITY"] == "1-URGENT") | (jn["O_ORDERPRIORITY"] == "2-HIGH"))
-    condition_g2 = ((jn["O_ORDERPRIORITY"] != "1-URGENT") & (jn["O_ORDERPRIORITY"] != "2-HIGH"))
+    condition_g1 = ((jn["O_ORDERPRIORITY"] == "1-URGENT")
+                    | (jn["O_ORDERPRIORITY"] == "2-HIGH"))
+    condition_g2 = ((jn["O_ORDERPRIORITY"] != "1-URGENT")
+                    & (jn["O_ORDERPRIORITY"] != "2-HIGH"))
 
     # Apply conditions and calculate counts
-    g1_count = jn[condition_g1].groupby("L_SHIPMODE")["O_ORDERPRIORITY"].count().rename('custom_g1_count')
-    g2_count = jn[condition_g2].groupby("L_SHIPMODE")["O_ORDERPRIORITY"].count().rename('custom_g2_count')
+    g1_count = jn[condition_g1].groupby(
+        "L_SHIPMODE")["O_ORDERPRIORITY"].count().rename('custom_g1_count')
+    g2_count = jn[condition_g2].groupby(
+        "L_SHIPMODE")["O_ORDERPRIORITY"].count().rename('custom_g2_count')
 
     g1_count = g1_count.clear_divisions()
     g2_count = g2_count.clear_divisions()
@@ -735,9 +741,11 @@ def q13(customer, orders):
     count_df = c_o_merged.groupby(["C_CUSTKEY"], sort=False).agg(
         C_COUNT=pd.NamedAgg(column="O_ORDERKEY", aggfunc="count")
     )
-    total = count_df.groupby(["C_COUNT"], sort=False).size().to_frame().reset_index()
+    total = count_df.groupby(
+        ["C_COUNT"], sort=False).size().to_frame().reset_index()
     total.columns = ["C_COUNT", "CUSTDIST"]
-    total = total.sort_values(by=["CUSTDIST", "C_COUNT"], ascending=[False, False])
+    total = total.sort_values(
+        by=["CUSTDIST", "C_COUNT"], ascending=[False, False])
     return total.compute()
 
 
@@ -755,9 +763,11 @@ def q14(lineitem, part):
         lineitem_filtered.L_SHIPDATE < endDate
     )
     flineitem = lineitem_filtered[sel]
-    jn = flineitem.merge(part_filtered, left_on="L_PARTKEY", right_on="P_PARTKEY")
+    jn = flineitem.merge(
+        part_filtered, left_on="L_PARTKEY", right_on="P_PARTKEY")
     jn["TMP"] = jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)
-    total = jn[jn.P_TYPE.str.startswith(p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
+    total = jn[jn.P_TYPE.str.startswith(
+        p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
     return total.compute()
 
 
@@ -774,7 +784,8 @@ def q15(lineitem, supplier):
     lineitem_filtered["REVENUE_PARTS"] = lineitem_filtered["L_EXTENDEDPRICE"] * (
         1.0 - lineitem_filtered["L_DISCOUNT"]
     )
-    lineitem_filtered = lineitem_filtered.loc[:, ["L_SUPPKEY", "REVENUE_PARTS"]]
+    lineitem_filtered = lineitem_filtered.loc[:, [
+        "L_SUPPKEY", "REVENUE_PARTS"]]
     revenue_table = (
         lineitem_filtered.groupby("L_SUPPKEY", sort=False)
         .agg(TOTAL_REVENUE=pd.NamedAgg(column="REVENUE_PARTS", aggfunc="sum"))
@@ -782,8 +793,10 @@ def q15(lineitem, supplier):
         .rename(columns={"L_SUPPKEY": "SUPPLIER_NO"})
     )
     max_revenue = revenue_table["TOTAL_REVENUE"].max()
-    revenue_table = revenue_table[revenue_table["TOTAL_REVENUE"] == max_revenue]
-    supplier_filtered = supplier.loc[:, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE"]]
+    revenue_table = revenue_table[revenue_table["TOTAL_REVENUE"]
+                                  == max_revenue]
+    supplier_filtered = supplier.loc[:, [
+        "S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE"]]
     total = supplier_filtered.merge(
         revenue_table, left_on="S_SUPPKEY", right_on="SUPPLIER_NO", how="inner"
     )
@@ -801,16 +814,19 @@ def q16(part, partsupp, supplier):
         & (~part["P_TYPE"].str.contains("^MEDIUM POLISHED"))
         & part["P_SIZE"].isin([49, 14, 23, 45, 19, 3, 36, 9])
     ]
-    part_filtered = part_filtered.loc[:, ["P_PARTKEY", "P_BRAND", "P_TYPE", "P_SIZE"]]
+    part_filtered = part_filtered.loc[:, [
+        "P_PARTKEY", "P_BRAND", "P_TYPE", "P_SIZE"]]
     partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY"]]
     total = part_filtered.merge(
         partsupp_filtered, left_on="P_PARTKEY", right_on="PS_PARTKEY", how="inner"
     )
     total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
     supplier_filtered = supplier[
-        supplier["S_COMMENT"].str.contains(r"Customer(\S|\s)*Complaints", regex=True)
+        supplier["S_COMMENT"].str.contains(
+            r"Customer(\S|\s)*Complaints", regex=True)
     ]
-    supplier_filtered = supplier_filtered.loc[:, ["S_SUPPKEY"]].drop_duplicates()
+    supplier_filtered = supplier_filtered.loc[:, [
+        "S_SUPPKEY"]].drop_duplicates()
     # left merge to select only PS_SUPPKEY values not in supplier_filtered
     total = total.merge(
         supplier_filtered, left_on="PS_SUPPKEY", right_on="S_SUPPKEY", how="left"
@@ -832,7 +848,8 @@ def q16(part, partsupp, supplier):
 @collect_datasets
 def q17(lineitem, part):
     left = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY", "L_EXTENDEDPRICE"]]
-    right = part[((part["P_BRAND"] == "Brand#23") & (part["P_CONTAINER"] == "MED BOX"))]
+    right = part[((part["P_BRAND"] == "Brand#23") &
+                  (part["P_CONTAINER"] == "MED BOX"))]
     right = right.loc[:, ["P_PARTKEY"]]
     line_part_merge = left.merge(
         right, left_on="L_PARTKEY", right_on="P_PARTKEY", how="inner"
@@ -850,23 +867,26 @@ def q17(lineitem, part):
         lineitem_avg, left_on="P_PARTKEY", right_on="L_PARTKEY", how="inner"
     )
     total = total[total["L_QUANTITY"] < total["avg"]]
-    total = pd.DataFrame({"avg_yearly": [[total["L_EXTENDEDPRICE"].sum() / 7.0]]})
+    total = pd.DataFrame(
+        {"avg_yearly": [[total["L_EXTENDEDPRICE"].sum() / 7.0]]})
     return total
 
 
 @timethis
 @collect_datasets
 def q18(lineitem, orders, customer):
-    gb1 = lineitem.groupby("L_ORDERKEY", sort=False)["L_QUANTITY"].sum().to_frame()
+    gb1 = lineitem.groupby("L_ORDERKEY", sort=False)[
+        "L_QUANTITY"].sum().to_frame()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
     jn1 = fgb1.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
     jn2 = jn1.merge(customer, left_on="O_CUSTKEY", right_on="C_CUSTKEY")
     gb2 = jn2.groupby(
         ["C_NAME", "C_CUSTKEY", "O_ORDERKEY", "O_ORDERDATE", "O_TOTALPRICE"],
-    
+
         sort=False,
     )["L_QUANTITY"].sum().to_frame()
-    total = gb2.sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
+    total = gb2.sort_values(
+        ["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
     return total.head(100)
 
 
@@ -1057,14 +1077,16 @@ def q21(lineitem, orders, supplier, nation):
     )
     total = total.loc[:, ["S_NATIONKEY", "S_NAME"]]
     nation_filtered = nation.loc[:, ["N_NAME", "N_NATIONKEY"]]
-    nation_filtered = nation_filtered[nation_filtered["N_NAME"] == "SAUDI ARABIA"]
+    nation_filtered = nation_filtered[nation_filtered["N_NAME"]
+                                      == "SAUDI ARABIA"]
     total = total.merge(
         nation_filtered, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
     )
     total = total.loc[:, ["S_NAME"]]
     total = total.groupby("S_NAME", sort=False).size().to_frame().reset_index()
     total.columns = ["S_NAME", "NUMWAIT"]
-    total = total.sort_values(by=["NUMWAIT", "S_NAME"], ascending=[False, True])
+    total = total.sort_values(
+        by=["NUMWAIT", "S_NAME"], ascending=[False, True])
     return total.compute()
 
 
@@ -1087,13 +1109,15 @@ def q22(customer, orders):
     customer_selected = customer_keys.merge(
         orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="left"
     )
-    customer_selected = customer_selected[customer_selected["O_CUSTKEY"].isna()]
+    customer_selected = customer_selected[customer_selected["O_CUSTKEY"].isna(
+    )]
     customer_selected = customer_selected.loc[:, ["C_CUSTKEY"]]
     customer_selected = customer_selected.merge(
         customer_filtered, on="C_CUSTKEY", how="inner"
     )
     customer_selected = customer_selected.loc[:, ["CNTRYCODE", "C_ACCTBAL"]]
-    agg1 = customer_selected.groupby(["CNTRYCODE"], sort=False).size().to_frame().reset_index()
+    agg1 = customer_selected.groupby(
+        ["CNTRYCODE"], sort=False).size().to_frame().reset_index()
     agg1.columns = ["CNTRYCODE", "NUMCUST"]
     agg2 = customer_selected.groupby(["CNTRYCODE"], sort=False).agg(
         TOTACCTBAL=pd.NamedAgg(column="C_ACCTBAL", aggfunc="sum")
@@ -1104,10 +1128,10 @@ def q22(customer, orders):
 
 
 def cast_cols(
-        root: str,
-        datasets_to_load=list(HEADERS.keys()),
-        verbose=False
-    ):
+    root: str,
+    datasets_to_load=list(HEADERS.keys()),
+    verbose=False
+):
     ddfs = []
 
     for dataset in datasets_to_load:
@@ -1129,12 +1153,12 @@ def cast_cols(
 
         # numeric downcasting; compile ddf back into pandas dataframe
         ddf = ddf.apply(
-            lambda x: pd.to_numeric(x, downcast="float") if x.dtype=='float64'
-                else pd.to_numeric(x, downcast="integer") if x.dtype=='int64'
-                else x,
+            lambda x: pd.to_numeric(x, downcast="float") if x.dtype == 'float64'
+            else pd.to_numeric(x, downcast="integer") if x.dtype == 'int64'
+            else x,
             axis=0
         )
-        
+
         if verbose:
             print("Memory usage w/ casting: {}".format(ddf.memory_usage(deep=True)))
 
@@ -1158,7 +1182,8 @@ def run_queries(
         if cast_types:
             args = cast_cols(root, _query_to_datasets[query])
         else:
-            args = [globals()[f"load_{dataset}"](root, **storage_options) for dataset in _query_to_datasets[query]]
+            args = [globals()[f"load_{dataset}"](
+                root, **storage_options) for dataset in _query_to_datasets[query]]
             # for dataset in _query_to_datasets[query]:
             #     args.append(
             #         globals()[f"load_{dataset}"](root, **storage_options)
@@ -1172,7 +1197,8 @@ def run_queries(
 
     total_end = time.time()
     print(f"Total query execution time (s): {total_end - total_start}")
-    print(f"Average total query execution time for 1 round: {(total_end - total_start) / 5}")
+    print(
+        f"Average total query execution time for 1 round: {(total_end - total_start) / 5}")
 
 
 def main():
@@ -1211,10 +1237,10 @@ def main():
     )
 
     parser.add_argument(
-        "--cast", 
-        action="store_true", 
+        "--cast",
+        action="store_true",
         help="Downcast nation/region and numerics"
-    ) 
+    )
 
     args = parser.parse_args()
     data_set = args.data_set
@@ -1223,7 +1249,6 @@ def main():
     if args.pyarrow_dtype:
         print("Enable pyarrow dtype")
         pd.set_option("mode.dtype_backend", "pyarrow")
-
 
     if args.lazy_copy:
         print("Enable lazy copy")
@@ -1253,4 +1278,3 @@ if __name__ == "__main__":
     print(f"Running TPC-H against pandas v{pd.__version__} with Dask")
     client = Client()  # start distributed scheduler locally.
     main()
-

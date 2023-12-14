@@ -1,0 +1,53 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Order Priority Checking Query (Q4)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	o_orderpriority,
+	count(*) as order_count
+from
+	orders
+where
+	o_orderdate >= date '1993-07-01'
+	and o_orderdate < date '1993-07-01' + interval '3' month
+	and exists (
+		select
+			*
+		from
+			lineitem
+		where
+			l_orderkey = o_orderkey
+			and l_commitdate < l_receiptdate
+	)
+group by
+	o_orderpriority
+order by
+	o_orderpriority;
+                                                                                QUERY PLAN                                                                                
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=258841.59..258889.44 rows=5 width=24) (actual time=8108.474..8137.446 rows=5 loops=1)
+   Group Key: orders.o_orderpriority
+   ->  Gather Merge  (cost=258841.59..258889.34 rows=10 width=24) (actual time=8107.118..8137.303 rows=15 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial GroupAggregate  (cost=257841.57..257888.16 rows=5 width=24) (actual time=8101.292..8105.442 rows=5 loops=3)
+               Group Key: orders.o_orderpriority
+               ->  Sort  (cost=257841.57..257857.08 rows=6206 width=16) (actual time=8100.259..8102.224 rows=87819 loops=3)
+                     Sort Key: orders.o_orderpriority
+                     Sort Method: quicksort  Memory: 5130kB
+                     Worker 0:  Sort Method: quicksort  Memory: 5130kB
+                     Worker 1:  Sort Method: quicksort  Memory: 5132kB
+                     ->  Nested Loop Semi Join  (cost=3964.97..257450.61 rows=6206 width=16) (actual time=31.171..8056.300 rows=87819 loops=3)
+                           ->  Parallel Bitmap Heap Scan on orders  (cost=3964.53..167520.42 rows=120492 width=20) (actual time=30.945..2784.180 rows=95750 loops=3)
+                                 Recheck Cond: ((o_orderdate >= '1993-07-01'::date) AND (o_orderdate < '1993-10-01 00:00:00'::timestamp without time zone))
+                                 Heap Blocks: exact=40490
+                                 ->  Bitmap Index Scan on idx_orders_orderdate  (cost=0.00..3892.23 rows=289180 width=0) (actual time=18.908..18.908 rows=287250 loops=1)
+                                       Index Cond: ((o_orderdate >= '1993-07-01'::date) AND (o_orderdate < '1993-10-01 00:00:00'::timestamp without time zone))
+                           ->  Index Scan using idx_lineitem_orderkey on lineitem  (cost=0.44..8.07 rows=26 width=8) (actual time=0.055..0.055 rows=1 loops=287250)
+                                 Index Cond: (l_orderkey = orders.o_orderkey)
+                                 Filter: (l_commitdate < l_receiptdate)
+                                 Rows Removed by Filter: 1
+ Planning Time: 0.843 ms
+ Execution Time: 8137.555 ms
+(24 rows)
+

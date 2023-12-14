@@ -1,0 +1,56 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Shipping Modes and Order Priority Query (Q12)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	l_shipmode,
+	sum(case
+		when o_orderpriority = '1-URGENT'
+			or o_orderpriority = '2-HIGH'
+			then 1
+		else 0
+	end) as high_line_count,
+	sum(case
+		when o_orderpriority <> '1-URGENT'
+			and o_orderpriority <> '2-HIGH'
+			then 1
+		else 0
+	end) as low_line_count
+from
+	orders,
+	lineitem
+where
+	o_orderkey = l_orderkey
+	and l_shipmode in ('MAIL', 'SHIP')
+	and l_commitdate < l_receiptdate
+	and l_shipdate < l_commitdate
+	and l_receiptdate >= date '1994-01-01'
+	and l_receiptdate < date '1994-01-01' + interval '1' year
+group by
+	l_shipmode
+order by
+	l_shipmode;
+                                                                                                                                  QUERY PLAN                                                                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize GroupAggregate  (cost=1114941.52..1116156.95 rows=7 width=27) (actual time=9307.413..9319.490 rows=2 loops=1)
+   Group Key: lineitem.l_shipmode
+   ->  Gather Merge  (cost=1114941.52..1116156.77 rows=14 width=27) (actual time=9303.460..9319.481 rows=6 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial GroupAggregate  (cost=1113941.50..1115155.13 rows=7 width=27) (actual time=9297.925..9301.818 rows=2 loops=3)
+               Group Key: lineitem.l_shipmode
+               ->  Sort  (cost=1113941.50..1114093.20 rows=60678 width=27) (actual time=9293.937..9295.092 rows=51790 loops=3)
+                     Sort Key: lineitem.l_shipmode
+                     Sort Method: quicksort  Memory: 4355kB
+                     Worker 0:  Sort Method: quicksort  Memory: 4371kB
+                     Worker 1:  Sort Method: quicksort  Memory: 4380kB
+                     ->  Nested Loop  (cost=0.43..1109120.97 rows=60678 width=27) (actual time=0.543..9274.552 rows=51790 loops=3)
+                           ->  Parallel Seq Scan on lineitem  (cost=0.00..888628.60 rows=60678 width=19) (actual time=0.504..9109.729 rows=51790 loops=3)
+                                 Filter: ((l_shipmode = ANY ('{MAIL,SHIP}'::bpchar[])) AND (l_commitdate < l_receiptdate) AND (l_shipdate < l_commitdate) AND (l_receiptdate >= '1994-01-01'::date) AND (l_receiptdate < '1995-01-01 00:00:00'::timestamp without time zone))
+                                 Rows Removed by Filter: 9948141
+                           ->  Index Scan using orders_pkey on orders  (cost=0.43..3.63 rows=1 width=20) (actual time=0.003..0.003 rows=1 loops=155371)
+                                 Index Cond: (o_orderkey = lineitem.l_orderkey)
+ Planning Time: 1.547 ms
+ Execution Time: 9319.581 ms
+(20 rows)
+

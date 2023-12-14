@@ -1,5 +1,9 @@
 if [ -z $1 ]; then
-    echo "Usage: source generate.sh <scale_factor>"
+    echo "Usage: source generate.sh <scale_factor> <dbname>"
+    return
+fi
+if [ -z $2 ]; then
+    echo "Usage: source generate.sh <scale_factor> <dbname>"
     return
 fi
 ORIG=$PWD
@@ -11,7 +15,7 @@ rm *.tbl
 ./dbgen -s $1
 
 # Make sure all tables exist in the tpchdb database (make sure its running on port 5432)
-psql -p5432 "tpchdb" -f $ORIG/create_tables.sql
+psql -p5432 "$2" -f $ORIG/create_tables.sql
 
 # Insert each .tbl file into the database
 tables=("lineitem" "partsupp" "orders" "customer" "supplier" "nation" "region" "part")
@@ -25,10 +29,10 @@ rm *.bak
 
 # Insert into database
 for table in ${tables[@]}; do 
-    psql -p5432 "tpchdb" -c "\COPY $table FROM '$table.tbl' DELIMITER '|';"
+    psql -p5432 "$2" -c "\COPY $table FROM '$table.tbl' DELIMITER '|';"
 done
 
 cd $ORIG
 
-psql -p5432 "tpchdb" -f $ORIG/create_index.sql
-psql -p5432 "tpchdb" -f $ORIG/vacuum.sql
+psql -p5432 "$2" -f $ORIG/create_index.sql
+psql -p5432 "$2" -f $ORIG/vacuum.sql

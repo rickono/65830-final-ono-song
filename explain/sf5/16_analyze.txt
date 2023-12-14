@@ -1,0 +1,68 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Parts/Supplier Relationship Query (Q16)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	p_brand,
+	p_type,
+	p_size,
+	count(distinct ps_suppkey) as supplier_cnt
+from
+	partsupp,
+	part
+where
+	p_partkey = ps_partkey
+	and p_brand <> 'Brand#45'
+	and p_type not like 'MEDIUM POLISHED%'
+	and p_size in (49, 14, 23, 45, 19, 3, 36, 9)
+	and ps_suppkey not in (
+		select
+			s_suppkey
+		from
+			supplier
+		where
+			s_comment like '%Customer%Complaints%'
+	)
+group by
+	p_brand,
+	p_type,
+	p_size
+order by
+	supplier_cnt desc,
+	p_brand,
+	p_type,
+	p_size;
+                                                                                         QUERY PLAN                                                                                          
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=197916.34..198115.58 rows=79697 width=44) (actual time=930.202..931.064 rows=27724 loops=1)
+   Sort Key: (count(DISTINCT partsupp.ps_suppkey)) DESC, part.p_brand, part.p_type, part.p_size
+   Sort Method: quicksort  Memory: 2716kB
+   ->  GroupAggregate  (cost=153368.17..191428.11 rows=79697 width=44) (actual time=732.388..903.393 rows=27724 loops=1)
+         Group Key: part.p_brand, part.p_type, part.p_size
+         ->  Gather Merge  (cost=153368.17..187684.67 rows=294647 width=44) (actual time=732.372..861.190 rows=592670 loops=1)
+               Workers Planned: 2
+               Workers Launched: 2
+               ->  Sort  (cost=152368.15..152675.07 rows=122770 width=44) (actual time=724.399..765.694 rows=197557 loops=3)
+                     Sort Key: part.p_brand, part.p_type, part.p_size, partsupp.ps_suppkey
+                     Sort Method: external merge  Disk: 11496kB
+                     Worker 0:  Sort Method: external merge  Disk: 11488kB
+                     Worker 1:  Sort Method: external merge  Disk: 10648kB
+                     ->  Parallel Hash Join  (cost=33441.71..138210.65 rows=122770 width=44) (actual time=69.830..446.528 rows=197557 loops=3)
+                           Hash Cond: (partsupp.ps_partkey = part.p_partkey)
+                           ->  Parallel Index Only Scan using partsupp_pkey on partsupp  (cost=1775.44..104357.68 rows=833025 width=16) (actual time=8.878..251.042 rows=1332640 loops=3)
+                                 Filter: (NOT (hashed SubPlan 1))
+                                 Rows Removed by Filter: 693
+                                 Heap Fetches: 0
+                                 SubPlan 1
+                                   ->  Seq Scan on supplier  (cost=0.00..1775.00 rows=5 width=4) (actual time=0.097..8.188 rows=26 loops=3)
+                                         Filter: ((s_comment)::text ~~ '%Customer%Complaints%'::text)
+                                         Rows Removed by Filter: 49974
+                           ->  Parallel Hash  (cost=30898.67..30898.67 rows=61408 width=40) (actual time=60.800..60.800 rows=49415 loops=3)
+                                 Buckets: 262144  Batches: 1  Memory Usage: 13152kB
+                                 ->  Parallel Seq Scan on part  (cost=0.00..30898.67 rows=61408 width=40) (actual time=0.012..51.463 rows=49415 loops=3)
+                                       Filter: ((p_brand <> 'Brand#45'::bpchar) AND ((p_type)::text !~~ 'MEDIUM POLISHED%'::text) AND (p_size = ANY ('{49,14,23,45,19,3,36,9}'::integer[])))
+                                       Rows Removed by Filter: 283918
+ Planning Time: 2.737 ms
+ Execution Time: 932.552 ms
+(30 rows)
+

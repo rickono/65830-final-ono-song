@@ -1,0 +1,75 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Large Volume Customer Query (Q18)
+-- Function Query Definition
+-- Approved February 1998
+select
+	c_name,
+	c_custkey,
+	o_orderkey,
+	o_orderdate,
+	o_totalprice,
+	sum(l_quantity)
+from
+	customer,
+	orders,
+	lineitem
+where
+	o_orderkey in (
+		select
+			l_orderkey
+		from
+			lineitem
+		group by
+			l_orderkey having
+				sum(l_quantity) > 300
+	)
+	and c_custkey = o_custkey
+	and o_orderkey = l_orderkey
+group by
+	c_name,
+	c_custkey,
+	o_orderkey,
+	o_orderdate,
+	o_totalprice
+order by
+	o_totalprice desc,
+	o_orderdate;
+                                                                                                                 QUERY PLAN                                                                                                                  
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=2009666.84..2010954.48 rows=515056 width=71) (actual time=12868.522..12868.583 rows=301 loops=1)
+   Sort Key: orders.o_totalprice DESC, orders.o_orderdate
+   Sort Method: quicksort  Memory: 46kB
+   ->  GroupAggregate  (cost=1486869.74..1939676.52 rows=515056 width=71) (actual time=12667.156..12868.458 rows=301 loops=1)
+         Group Key: customer.c_custkey, orders.o_orderkey
+         ->  Incremental Sort  (cost=1486869.74..1929375.40 rows=515056 width=44) (actual time=12667.143..12868.138 rows=2107 loops=1)
+               Sort Key: customer.c_custkey, orders.o_orderkey
+               Presorted Key: customer.c_custkey
+               Full-sort Groups: 61  Sort Method: quicksort  Average Memory: 27kB  Peak Memory: 27kB
+               ->  Nested Loop  (cost=1486868.92..1906197.88 rows=515056 width=44) (actual time=12663.444..12867.731 rows=2107 loops=1)
+                     ->  Merge Join  (cost=1486868.48..1528678.74 rows=128768 width=47) (actual time=12663.010..12813.976 rows=301 loops=1)
+                           Merge Cond: (customer.c_custkey = orders.o_custkey)
+                           ->  Index Scan using customer_pkey on customer  (cost=0.42..38010.92 rows=750000 width=23) (actual time=0.123..133.289 rows=749873 loops=1)
+                           ->  Sort  (cost=1486865.77..1487187.69 rows=128768 width=32) (actual time=12661.255..12661.350 rows=301 loops=1)
+                                 Sort Key: orders.o_custkey
+                                 Sort Method: quicksort  Memory: 43kB
+                                 ->  Hash Join  (cost=1243176.38..1475936.96 rows=128768 width=32) (actual time=11186.462..12661.074 rows=301 loops=1)
+                                       Hash Cond: (orders.o_orderkey = lineitem_1.l_orderkey)
+                                       ->  Seq Scan on orders  (cost=0.00..213072.85 rows=7500085 width=24) (actual time=0.018..1080.659 rows=7500000 loops=1)
+                                       ->  Hash  (cost=1241566.78..1241566.78 rows=128768 width=8) (actual time=11185.231..11185.281 rows=301 loops=1)
+                                             Buckets: 131072  Batches: 1  Memory Usage: 1036kB
+                                             ->  Finalize GroupAggregate  (cost=1000.46..1241566.78 rows=128768 width=8) (actual time=6.102..11184.524 rows=301 loops=1)
+                                                   Group Key: lineitem_1.l_orderkey
+                                                   Filter: (sum(lineitem_1.l_quantity) > '300'::numeric)
+                                                   Rows Removed by Filter: 7499699
+                                                   ->  Gather Merge  (cost=1000.46..1229977.63 rows=772610 width=40) (actual time=4.135..8890.690 rows=7500000 loops=1)
+                                                         Workers Planned: 2
+                                                         Workers Launched: 2
+                                                         ->  Partial GroupAggregate  (cost=0.44..1139799.24 rows=386305 width=40) (actual time=0.154..8687.505 rows=2500000 loops=3)
+                                                               Group Key: lineitem_1.l_orderkey
+                                                               ->  Parallel Index Scan using idx_lineitem_orderkey on lineitem lineitem_1  (cost=0.44..1072471.62 rows=12499760 width=13) (actual time=0.148..7497.935 rows=9999932 loops=3)
+                     ->  Index Scan using idx_lineitem_orderkey on lineitem  (cost=0.44..2.15 rows=78 width=13) (actual time=0.164..0.178 rows=7 loops=301)
+                           Index Cond: (l_orderkey = orders.o_orderkey)
+ Planning Time: 4.869 ms
+ Execution Time: 12868.705 ms
+(35 rows)
+

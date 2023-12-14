@@ -1,0 +1,45 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Small-Quantity-Order Revenue Query (Q17)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	sum(l_extendedprice) / 7.0 as avg_yearly
+from
+	lineitem,
+	part
+where
+	p_partkey = l_partkey
+	and p_brand = 'Brand#23'
+	and p_container = 'MED BOX'
+	and l_quantity < (
+		select
+			0.2 * avg(l_quantity)
+		from
+			lineitem
+		where
+			l_partkey = p_partkey
+	);
+                                                                               QUERY PLAN                                                                               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=1015336.23..1015336.24 rows=1 width=32) (actual time=16944.998..16945.058 rows=1 loops=1)
+   ->  Hash Join  (cost=27851.81..1015309.60 rows=10650 width=8) (actual time=46.562..16944.547 rows=2728 loops=1)
+         Hash Cond: (lineitem.l_partkey = part.p_partkey)
+         Join Filter: (lineitem.l_quantity < (SubPlan 1))
+         Rows Removed by Join Filter: 27683
+         ->  Seq Scan on lineitem  (cost=0.00..907378.24 rows=29999424 width=21) (actual time=0.009..12859.621 rows=29999795 loops=1)
+         ->  Hash  (cost=27838.50..27838.50 rows=1065 width=4) (actual time=36.238..36.295 rows=1021 loops=1)
+               Buckets: 2048  Batches: 1  Memory Usage: 52kB
+               ->  Gather  (cost=1000.00..27838.50 rows=1065 width=4) (actual time=0.374..36.199 rows=1021 loops=1)
+                     Workers Planned: 2
+                     Workers Launched: 2
+                     ->  Parallel Seq Scan on part  (cost=0.00..26732.00 rows=444 width=4) (actual time=0.287..34.647 rows=340 loops=3)
+                           Filter: ((p_brand = 'Brand#23'::bpchar) AND (p_container = 'MED BOX'::bpchar))
+                           Rows Removed by Filter: 332993
+         SubPlan 1
+           ->  Aggregate  (cost=133.08..133.09 rows=1 width=32) (actual time=0.076..0.076 rows=1 loops=30411)
+                 ->  Index Scan using idx_lineitem_part_supp on lineitem lineitem_1  (cost=0.44..133.00 rows=32 width=5) (actual time=0.009..0.073 rows=31 loops=30411)
+                       Index Cond: (l_partkey = part.p_partkey)
+ Planning Time: 1.179 ms
+ Execution Time: 16945.129 ms
+(20 rows)
+

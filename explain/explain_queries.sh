@@ -14,11 +14,11 @@ db_name="tpchdb"
 # Loop through the query files and run each query
 for query_file in "${query_files[@]}"; do
     # Define output file name based on the query file name
-    output_file="${query_file%.sql}.txt"
+    output_file="${query_file%.sql}_analyze.txt"
     echo $query_file
 
     # Run the query using psql and save the output to the corresponding file
-    psql -U "$db_user" -d "$db_name" -a -f "../tpch/dbgen/explain_queries/$query_file" > "$out_folder/$output_file"
+    psql -U "$db_user" -d "$db_name" -a -f "../tpch/dbgen/explain_analyze_queries/$query_file" > "$out_folder/$output_file"
 
     # Check if the psql command was successful
     if [ $? -eq 0 ]; then

@@ -1,0 +1,39 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Promotion Effect Query (Q14)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	100.00 * sum(case
+		when p_type like 'PROMO%'
+			then l_extendedprice * (1 - l_discount)
+		else 0
+	end) / sum(l_extendedprice * (1 - l_discount)) as promo_revenue
+from
+	lineitem,
+	part
+where
+	l_partkey = p_partkey
+	and l_shipdate >= date '1995-09-01'
+	and l_shipdate < date '1995-09-01' + interval '1' month;
+                                                                                QUERY PLAN                                                                                 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=737017.20..737017.22 rows=1 width=32) (actual time=7609.223..7622.631 rows=1 loops=1)
+   ->  Gather  (cost=737016.97..737017.18 rows=2 width=64) (actual time=7608.530..7622.621 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=736016.97..736016.98 rows=1 width=64) (actual time=7606.695..7606.699 rows=1 loops=3)
+               ->  Parallel Hash Join  (cost=700332.22..733413.31 rows=148780 width=33) (actual time=7103.110..7582.770 rows=124743 loops=3)
+                     Hash Cond: (part.p_partkey = lineitem.l_partkey)
+                     ->  Parallel Seq Scan on part  (cost=0.00..24648.67 rows=416667 width=25) (actual time=0.373..385.649 rows=333333 loops=3)
+                     ->  Parallel Hash  (cost=698472.47..698472.47 rows=148780 width=20) (actual time=7102.490..7102.492 rows=124743 loops=3)
+                           Buckets: 524288  Batches: 1  Memory Usage: 24640kB
+                           ->  Parallel Bitmap Heap Scan on lineitem  (cost=9168.54..698472.47 rows=148780 width=20) (actual time=56.082..7057.376 rows=124743 loops=3)
+                                 Recheck Cond: ((l_shipdate >= '1995-09-01'::date) AND (l_shipdate < '1995-10-01 00:00:00'::timestamp without time zone))
+                                 Rows Removed by Index Recheck: 2115913
+                                 Heap Blocks: exact=24794 lossy=44522
+                                 ->  Bitmap Index Scan on idx_lineitem_shipdate  (cost=0.00..9079.27 rows=357071 width=0) (actual time=48.700..48.704 rows=374228 loops=1)
+                                       Index Cond: ((l_shipdate >= '1995-09-01'::date) AND (l_shipdate < '1995-10-01 00:00:00'::timestamp without time zone))
+ Planning Time: 2.684 ms
+ Execution Time: 7622.686 ms
+(18 rows)
+

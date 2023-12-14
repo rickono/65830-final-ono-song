@@ -1,0 +1,27 @@
+explain analyze -- $ID$
+-- TPC-H/TPC-R Forecasting Revenue Change Query (Q6)
+-- Functional Query Definition
+-- Approved February 1998
+select
+	sum(l_extendedprice * l_discount) as revenue
+from
+	lineitem
+where
+	l_shipdate >= date '1994-01-01'
+	and l_shipdate < date '1994-01-01' + interval '1' year
+	and l_discount between 0.06 - 0.01 and 0.06 + 0.01
+	and l_quantity < 24;
+                                                                                                        QUERY PLAN                                                                                                         
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Finalize Aggregate  (cost=890832.67..890832.68 rows=1 width=32) (actual time=8158.058..8168.390 rows=1 loops=1)
+   ->  Gather  (cost=890832.45..890832.66 rows=2 width=32) (actual time=8157.920..8168.372 rows=3 loops=1)
+         Workers Planned: 2
+         Workers Launched: 2
+         ->  Partial Aggregate  (cost=889832.45..889832.46 rows=1 width=32) (actual time=8156.275..8156.276 rows=1 loops=3)
+               ->  Parallel Seq Scan on lineitem  (cost=0.00..888628.60 rows=240769 width=12) (actual time=0.172..8127.127 rows=190000 loops=3)
+                     Filter: ((l_shipdate >= '1994-01-01'::date) AND (l_shipdate < '1995-01-01 00:00:00'::timestamp without time zone) AND (l_discount >= 0.05) AND (l_discount <= 0.07) AND (l_quantity < '24'::numeric))
+                     Rows Removed by Filter: 9809932
+ Planning Time: 0.618 ms
+ Execution Time: 8168.437 ms
+(10 rows)
+
